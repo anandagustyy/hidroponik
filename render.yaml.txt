@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: hidroponik-api
+    runtime: python
+    buildCommand: ""
+    startCommand: python api.py

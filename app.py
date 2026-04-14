@@ -5,51 +5,49 @@ from streamlit_autorefresh import st_autorefresh
 import plotly.graph_objects as go
 from datetime import datetime
 
+# =========================
+# CONFIG
+# =========================
 st.set_page_config(layout="wide")
+
+# =========================
+# STYLE DARK MODE
+# =========================
 st.markdown("""
 <style>
+.stApp {
+    background-color: #0e1117;
+}
+
+.block-container {
+    color: white;
+}
+
+h1, h2, h3, h4, h5, h6, p, div {
+    color: white !important;
+}
+
 div[data-testid="stAlert"] {
     color: white;
 }
 </style>
 """, unsafe_allow_html=True)
+
 # =========================
-# AUTO REFRESH (30 DETIK)
+# AUTO REFRESH
 # =========================
 st_autorefresh(interval=30000, key="refresh")
 
-# =========================
-# BACKGROUND CENTER
-# =========================
-st.markdown("""
-<style>
-.stApp {
-    background-color: #0e1117;  /* 🔥 hitam elegan */
-}
-
-/* container utama */
-.block-container {
-    background-color: rgba(0,0,0,0);
-    color: white;
-}
-
-/* semua teks jadi putih */
-h1, h2, h3, h4, h5, h6, p, div {
-    color: white !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
-st.title("Smart Hydroponic Monitoring")
+st.title("🌱 Smart Hydroponic Monitoring")
 
 # =========================
-# FIREBASE URL
+# FIREBASE
 # =========================
 url = "https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json"
 history_url = "https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json"
 
 # =========================
-# AMBIL DATA SENSOR
+# AMBIL DATA
 # =========================
 data = requests.get(url).json()
 
@@ -59,7 +57,7 @@ ppm = data.get("ppm", 0)
 st.write("DEBUG PPM:", ppm)
 
 # =========================
-# SIMPAN KE FIREBASE HISTORY
+# SIMPAN HISTORI
 # =========================
 new_data = {
     "time": str(datetime.now()),
@@ -70,7 +68,46 @@ new_data = {
 requests.post(history_url, json=new_data)
 
 # =========================
-# INDIKATOR PH (SIGNAL)
+# GAUGE PPM (HARUS DI ATAS)
+# =========================
+def ppm_gauge(ppm):
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=ppm,
+        title={'text': "PPM", 'font': {'color': "white"}},
+        number={'font': {'color': "white"}},
+        gauge={
+            'axis': {
+                'range': [0, 2000],
+                'tickvals': [0, 200, 500, 1000, 1500, 2000],
+                'ticktext': ['0', '200', '500', '1000', '1500', '2000'],
+                'tickcolor': "white",
+                'tickfont': {'color': "white"}
+            },
+            'bar': {
+                'color': "white",
+                'thickness': 0.08
+            },
+            'bgcolor': "rgba(0,0,0,0)",
+            'steps': [
+                {'range': [0, 200], 'color': "red"},
+                {'range': [200, 500], 'color': "yellow"},
+                {'range': [500, 1000], 'color': "green"},
+                {'range': [1000, 2000], 'color': "blue"},
+            ],
+        }
+    ))
+
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font={'color': "white"},
+    )
+
+    return fig
+
+# =========================
+# INDIKATOR PH
 # =========================
 def ph_indicator(ph):
     bars = ["⬜","⬜","⬜","⬜","⬜"]
@@ -100,61 +137,21 @@ def ph_indicator(ph):
 
     return "".join(bars)
 
+# =========================
+# LAYOUT
+# =========================
 col1, col2 = st.columns([1,2])
 
-# 🔹 KOLOM KIRI (pH)
+# pH
 with col1:
     st.subheader("pH")
     st.metric("Nilai pH", round(ph,2))
     st.write(ph_indicator(ph))
 
-# 🔹 KOLOM KANAN (PPM)
+# PPM
 with col2:
     st.subheader("PPM")
-
-
     st.plotly_chart(ppm_gauge(ppm), use_container_width=True)
-# =========================
-# GAUGE PPM (JARUM)
-# =========================
-def ppm_gauge(ppm):
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=ppm,
-        title={'text': "PPM", 'font': {'color': "white"}},
-        number={'font': {'color': "white"}},
-        gauge={
-            'axis': {
-                'range': [0, 2000],
-                'tickcolor': "white",
-                'tickfont': {'color': "white"},
-                'tickvals': [0, 200, 500, 1000, 1500, 2000],
-            },
-
-            # 🔥 jarum
-            'bar': {
-                'color': "white",
-                'thickness': 0.08
-            },
-
-            'bgcolor': "rgba(0,0,0,0)",
-
-            'steps': [
-                {'range': [0, 200], 'color': "red"},
-                {'range': [200, 500], 'color': "yellow"},
-                {'range': [500, 1000], 'color': "green"},
-                {'range': [1000, 2000], 'color': "blue"},
-            ],
-        }
-    ))
-
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font={'color': "white"},
-    )
-
-    return fig
 
 # =========================
 # NOTIFIKASI
@@ -176,7 +173,7 @@ else:
     st.info("⚠️ Nutrisi terlalu tinggi")
 
 # =========================
-# AMBIL SEMUA HISTORI
+# HISTORI
 # =========================
 history_data = requests.get(history_url).json()
 
@@ -188,7 +185,7 @@ if history_data:
 df = pd.DataFrame(rows)
 
 # =========================
-# GRAFIK REALTIME
+# GRAFIK
 # =========================
 st.subheader("📊 Grafik Monitoring")
 
@@ -199,7 +196,7 @@ if not df.empty:
     st.line_chart(df.set_index("time")[["ph","ppm"]])
 
 # =========================
-# DOWNLOAD CSV
+# DOWNLOAD
 # =========================
 csv = df.to_csv(index=False).encode('utf-8')
 
@@ -211,8 +208,7 @@ st.download_button(
 )
 
 # =========================
-# TABEL HISTORI
+# TABEL
 # =========================
 st.subheader("📁 Riwayat Lengkap")
-
 st.dataframe(df)

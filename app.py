@@ -110,32 +110,41 @@ def ppm_gauge(ppm):
 # INDIKATOR PH
 # =========================
 def ph_indicator(ph):
-    bars = ["⬜","⬜","⬜","⬜","⬜"]
+    colors = ["#444", "#444", "#444", "#444", "#444"]
 
     if ph < 2:
-        bars[0] = "🟥"
+        colors[0] = "red"
     elif ph < 4:
-        bars[0] = "🟥"
-        bars[1] = "🟧"
+        colors[0] = "red"
+        colors[1] = "orange"
     elif ph < 6:
-        bars[0] = "🟥"
-        bars[1] = "🟧"
-        bars[2] = "🟨"
+        colors[0] = "red"
+        colors[1] = "orange"
+        colors[2] = "yellow"
     elif ph < 8:
-        bars[0] = "🟥"
-        bars[1] = "🟧"
-        bars[2] = "🟨"
-        bars[3] = "🟩"
+        colors[0] = "red"
+        colors[1] = "orange"
+        colors[2] = "yellow"
+        colors[3] = "green"
     elif ph < 10:
-        bars[0] = "🟥"
-        bars[1] = "🟧"
-        bars[2] = "🟨"
-        bars[3] = "🟩"
-        bars[4] = "🟦"
+        colors[0] = "red"
+        colors[1] = "orange"
+        colors[2] = "yellow"
+        colors[3] = "green"
+        colors[4] = "blue"
     else:
-        bars = ["🟦","🟦","🟦","🟦","🟦"]
+        colors = ["blue","blue","blue","blue","blue"]
 
-    return "".join(bars)
+    heights = [10, 15, 20, 25, 30]
+
+    html = '<div style="display:flex; align-items:flex-end; gap:4px;">'
+
+    for i, c in enumerate(colors):
+        html += f'<div style="width:8px;height:{heights[i]}px;background:{c};border-radius:2px;"></div>'
+
+    html += '</div>'
+
+    return html
 
 # =========================
 # LAYOUT
@@ -146,7 +155,7 @@ col1, col2 = st.columns([1,2])
 with col1:
     st.subheader("pH")
     st.metric("Nilai pH", round(ph,2))
-    st.write(ph_indicator(ph))
+    st.markdown(ph_indicator(ph), unsafe_allow_html=True)
 
 # PPM
 with col2:

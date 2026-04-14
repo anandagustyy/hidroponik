@@ -2,8 +2,8 @@
 #include <HTTPClient.h>
 
 // WIFI
-const char* ssid = "anandagusty";
-const char* password = "anakbaik";
+const char* ssid = "Elektro Master";
+const char* password = "haruscerdas";
 
 // FIREBASE
 String firebaseURL = "https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json";

@@ -5,37 +5,58 @@ from streamlit_autorefresh import st_autorefresh
 import plotly.graph_objects as go
 from datetime import datetime
 
-# AUTO REFRESH
-st_autorefresh(interval=2000, key="refresh")
+# =========================
+# AUTO REFRESH (30 DETIK)
+# =========================
+st_autorefresh(interval=30000, key="refresh")
 
-# BACKGROUND
-st.markdown(
-    """
-    <style>
-    .stApp {
-        background-image: url("https://images.unsplash.com/photo-1501004318641-b39e6451bec6");
-        background-size: cover;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+# =========================
+# BACKGROUND CENTER
+# =========================
+st.markdown("""
+<style>
+.stApp {
+    background-image: url("https://images.unsplash.com/photo-1501004318641-b39e6451bec6");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+</style>
+""", unsafe_allow_html=True)
 
 st.title("🌱 Smart Hydroponic Monitoring")
 
+# =========================
 # FIREBASE URL
+# =========================
 url = "https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json"
+history_url = "https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json"
 
-# AMBIL DATA
+# =========================
+# AMBIL DATA SENSOR
+# =========================
 data = requests.get(url).json()
+
 ph = data.get("ph", 0)
 ppm = data.get("ppm", 0)
 
-# =======================
-# 📶 INDIKATOR PH (SIGNAL)
-# =======================
+# =========================
+# SIMPAN KE FIREBASE HISTORY
+# =========================
+new_data = {
+    "time": str(datetime.now()),
+    "ph": ph,
+    "ppm": ppm
+}
+
+requests.post(history_url, json=new_data)
+
+# =========================
+# INDIKATOR PH (SIGNAL)
+# =========================
 def ph_indicator(ph):
-    bars = ["⬜", "⬜", "⬜", "⬜", "⬜"]
+    bars = ["⬜","⬜","⬜","⬜","⬜"]
 
     if ph < 2:
         bars[0] = "🟥"
@@ -69,9 +90,9 @@ with col1:
     st.metric("Nilai pH", round(ph,2))
     st.write(ph_indicator(ph))
 
-# =======================
-# 🧭 GAUGE PPM
-# =======================
+# =========================
+# GAUGE PPM (JARUM)
+# =========================
 def ppm_gauge(ppm):
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
@@ -79,7 +100,8 @@ def ppm_gauge(ppm):
         title={'text': "PPM"},
         gauge={
             'axis': {'range': [0, 2000]},
-            'bar': {'color': "black"},
+            'bar': {'color': "black", 'thickness': 0.2},
+            'bgcolor': "rgba(0,0,0,0)",
             'steps': [
                 {'range': [0, 200], 'color': "red"},
                 {'range': [200, 500], 'color': "yellow"},
@@ -88,14 +110,20 @@ def ppm_gauge(ppm):
             ],
         }
     ))
+
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        font={'color': "white"}
+    )
+
     return fig
 
 with col2:
     st.plotly_chart(ppm_gauge(ppm), use_container_width=True)
 
-# =======================
-# 🔔 NOTIFIKASI
-# =======================
+# =========================
+# NOTIFIKASI
+# =========================
 if ph < 5:
     st.error("⚠️ pH terlalu asam!")
 elif ph > 8:
@@ -112,27 +140,44 @@ elif ppm <= 1000:
 else:
     st.info("⚠️ Nutrisi terlalu tinggi")
 
-# =======================
-# 📊 GRAFIK REALTIME
-# =======================
-if "history" not in st.session_state:
-    st.session_state.history = []
+# =========================
+# AMBIL SEMUA HISTORI
+# =========================
+history_data = requests.get(history_url).json()
 
-st.session_state.history.append({
-    "time": datetime.now(),
-    "ph": ph,
-    "ppm": ppm
-})
+rows = []
+if history_data:
+    for key, value in history_data.items():
+        rows.append(value)
 
-df = pd.DataFrame(st.session_state.history)
+df = pd.DataFrame(rows)
 
-st.subheader("Grafik Realtime")
+# =========================
+# GRAFIK REALTIME
+# =========================
+st.subheader("📊 Grafik Monitoring")
 
-st.line_chart(df.set_index("time")[["ph","ppm"]])
+if not df.empty:
+    df["time"] = pd.to_datetime(df["time"])
+    df = df.sort_values("time")
 
-# =======================
-# 📁 HISTORI DATA
-# =======================
-st.subheader("📁 Riwayat Data")
+    st.line_chart(df.set_index("time")[["ph","ppm"]])
 
-st.dataframe(df.tail(20))
+# =========================
+# DOWNLOAD CSV
+# =========================
+csv = df.to_csv(index=False).encode('utf-8')
+
+st.download_button(
+    label="📥 Download Data CSV",
+    data=csv,
+    file_name='data_hidroponik.csv',
+    mime='text/csv',
+)
+
+# =========================
+# TABEL HISTORI
+# =========================
+st.subheader("📁 Riwayat Lengkap")
+
+st.dataframe(df)

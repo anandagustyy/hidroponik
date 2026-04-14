@@ -5,6 +5,7 @@ from streamlit_autorefresh import st_autorefresh
 import plotly.graph_objects as go
 from datetime import datetime
 
+st.set_page_config(layout="wide")
 # =========================
 # AUTO REFRESH (30 DETIK)
 # =========================
@@ -20,12 +21,18 @@ st.markdown("""
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    background-attachment: fixed;
+}
+
+/* overlay putih transparan */
+.block-container {
+    background-color: rgba(255,255,255,0.85);
+    padding: 20px;
+    border-radius: 15px;
 }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🌱 Smart Hydroponic Monitoring")
+st.title("Smart Hydroponic Monitoring")
 
 # =========================
 # FIREBASE URL
@@ -100,8 +107,16 @@ def ppm_gauge(ppm):
         title={'text': "PPM"},
         gauge={
             'axis': {'range': [0, 2000]},
-            'bar': {'color': "black", 'thickness': 0.2},
+            'bar': {'color': "rgba(0,0,0,0)"},  # hilangkan bar isi
             'bgcolor': "rgba(0,0,0,0)",
+
+            # 🔥 INI TEMPATNYA
+            'threshold': {
+                'line': {'color': "black", 'width': 6},
+                'thickness': 0.75,
+                'value': ppm
+            },
+
             'steps': [
                 {'range': [0, 200], 'color': "red"},
                 {'range': [200, 500], 'color': "yellow"},
@@ -113,13 +128,10 @@ def ppm_gauge(ppm):
 
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
-        font={'color': "white"}
+        plot_bgcolor="rgba(0,0,0,0)"
     )
 
     return fig
-
-with col2:
-    st.plotly_chart(ppm_gauge(ppm), use_container_width=True)
 
 # =========================
 # NOTIFIKASI

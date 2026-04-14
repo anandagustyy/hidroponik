@@ -106,16 +106,21 @@ def ppm_gauge(ppm):
         value=ppm,
         title={'text': "PPM"},
         gauge={
-            'axis': {'range': [0, 2000]},
-            'bar': {'color': "rgba(0,0,0,0)"},  # hilangkan bar isi
-            'bgcolor': "rgba(0,0,0,0)",
+            'axis': {
+                'range': [0, 2000],
 
-            # 🔥 INI TEMPATNYA
-            'threshold': {
-                'line': {'color': "black", 'width': 6},
-                'thickness': 0.75,
-                'value': ppm
+                # 🔥 TAMBAHKAN ANGKA SKALA
+                'tickvals': [0, 200, 500, 1000, 1500, 2000],
+                'ticktext': ['0', '200', '500', '1000', '1500', '2000']
             },
+
+            # 🔥 JARUM
+            'bar': {
+                'color': "black",
+                'thickness': 0.08
+            },
+
+            'bgcolor': "rgba(0,0,0,0)",
 
             'steps': [
                 {'range': [0, 200], 'color': "red"},
@@ -128,7 +133,9 @@ def ppm_gauge(ppm):
 
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)"
+        plot_bgcolor="rgba(0,0,0,0)",
+        font={'color': "black"},
+        margin=dict(l=10, r=10, t=50, b=10)
     )
 
     return fig

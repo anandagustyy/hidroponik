@@ -6,6 +6,13 @@ import plotly.graph_objects as go
 from datetime import datetime
 
 st.set_page_config(layout="wide")
+st.markdown("""
+<style>
+div[data-testid="stAlert"] {
+    color: white;
+}
+</style>
+""", unsafe_allow_html=True)
 # =========================
 # AUTO REFRESH (30 DETIK)
 # =========================
@@ -17,17 +24,18 @@ st_autorefresh(interval=30000, key="refresh")
 st.markdown("""
 <style>
 .stApp {
-    background-image: url("https://images.unsplash.com/photo-1501004318641-b39e6451bec6");
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
+    background-color: #0e1117;  /* 🔥 hitam elegan */
 }
 
-/* overlay putih transparan */
+/* container utama */
 .block-container {
-    background-color: rgba(255,255,255,0.85);
-    padding: 20px;
-    border-radius: 15px;
+    background-color: rgba(0,0,0,0);
+    color: white;
+}
+
+/* semua teks jadi putih */
+h1, h2, h3, h4, h5, h6, p, div {
+    color: white !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -47,6 +55,8 @@ data = requests.get(url).json()
 
 ph = data.get("ph", 0)
 ppm = data.get("ppm", 0)
+
+st.write("DEBUG PPM:", ppm)
 
 # =========================
 # SIMPAN KE FIREBASE HISTORY
@@ -90,13 +100,20 @@ def ph_indicator(ph):
 
     return "".join(bars)
 
-col1, col2 = st.columns(2)
+col1, col2 = st.columns([1,2])
 
+# 🔹 KOLOM KIRI (pH)
 with col1:
     st.subheader("pH")
     st.metric("Nilai pH", round(ph,2))
     st.write(ph_indicator(ph))
 
+# 🔹 KOLOM KANAN (PPM)
+with col2:
+    st.subheader("PPM")
+
+
+    st.plotly_chart(ppm_gauge(ppm), use_container_width=True)
 # =========================
 # GAUGE PPM (JARUM)
 # =========================
@@ -104,19 +121,19 @@ def ppm_gauge(ppm):
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=ppm,
-        title={'text': "PPM"},
+        title={'text': "PPM", 'font': {'color': "white"}},
+        number={'font': {'color': "white"}},
         gauge={
             'axis': {
                 'range': [0, 2000],
-
-                # 🔥 TAMBAHKAN ANGKA SKALA
+                'tickcolor': "white",
+                'tickfont': {'color': "white"},
                 'tickvals': [0, 200, 500, 1000, 1500, 2000],
-                'ticktext': ['0', '200', '500', '1000', '1500', '2000']
             },
 
-            # 🔥 JARUM
+            # 🔥 jarum
             'bar': {
-                'color': "black",
+                'color': "white",
                 'thickness': 0.08
             },
 
@@ -134,8 +151,7 @@ def ppm_gauge(ppm):
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font={'color': "black"},
-        margin=dict(l=10, r=10, t=50, b=10)
+        font={'color': "white"},
     )
 
     return fig

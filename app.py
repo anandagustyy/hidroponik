@@ -4,10 +4,14 @@ import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 from datetime import datetime
 
+# =========================
 # CONFIG
+# =========================
 st.set_page_config(layout="wide")
 
+# =========================
 # STYLE DARK MODE & TOMBOL HITAM
+# =========================
 st.markdown("""
 <style>
 .stApp {
@@ -41,16 +45,22 @@ div.stButton > button:hover, div[data-testid="stDownloadButton"] > button:hover 
 </style>
 """, unsafe_allow_html=True)
 
+# =========================
 # AUTO REFRESH
+# =========================
 st_autorefresh(interval=30000, key="refresh")
 
 st.title("Smart Hydroponic Monitoring")
 
+# =========================
 # FIREBASE
+# =========================
 url = "https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json"
 history_url = "https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json"
 
+# =========================
 # AMBIL DATA
+# =========================
 try:
     data = requests.get(url).json()
     ph = float(data.get("ph", 0))
@@ -59,7 +69,9 @@ except Exception:
     ph = 0.0
     ppm = 0
 
+# =========================
 # SIMPAN HISTORI
+# =========================
 new_data = {
     "time": str(datetime.now()),
     "ph": ph,
@@ -70,10 +82,20 @@ try:
 except Exception:
     pass
 
-# LAYOUT UTAMA 
+# =========================
+# LAYOUT UTAMA (MENAMPILKAN ANGKA BESAR)
+# =========================
 col1, col2 = st.columns(2)
 
-# STATUS TEXT
+with col1:
+    st.metric(label="pH", value=f"{ph:.2f}")
+
+with col2:
+    st.metric(label="PPM", value=f"{ppm}")
+
+# =========================
+# STATUS TEXT (KUSTOM WARNA)
+# =========================
 st.subheader("Status Nutrisi dan Keasaman")
 
 # Teks pH
@@ -100,7 +122,9 @@ elif 1201 <= ppm <= 1500:
 elif ppm >= 1501:
     st.markdown("Status PPM: <span style='color: #0000FF; font-weight: bold;'>Nutrisi Terlalu Banyak</span>", unsafe_allow_html=True)
 
-# HISTORY
+# =========================
+# PROSES DATA HISTORI
+# =========================
 try:
     history_data = requests.get(history_url).json()
 except Exception:
@@ -138,7 +162,9 @@ if not df.empty:
         st.write("PPM")
         st.line_chart(df.set_index("time")["ppm"])
 
-    # DOWNLOAD 
+    # =========================
+    # DOWNLOAD & TABEL RIWAYAT
+    # =========================
     st.subheader("Riwayat Lengkap")
     
     csv = df_display.to_csv(index=False).encode('utf-8')

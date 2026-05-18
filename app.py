@@ -10,7 +10,7 @@ from datetime import datetime
 st.set_page_config(layout="wide")
 
 # =========================
-# STYLE DARK MODE & PERBAIKAN POPUP/SEARCH TABEL (COKELAT & PUTIH)
+# STYLE DARK MODE & PERBAIKAN TOTAL DATA FRAME TOOLBAR
 # =========================
 st.markdown("""
 <style>
@@ -25,39 +25,33 @@ h1, h2, h3, h4, h5, h6, p, label {
     color: #ffffff;
 }
 
-/* 2. PERBAIKAN UNTUK MENU PENCARIAN / FILTER / TOOLBAR DI BAWAH DOWNLOAD (ST.DATAFRAME) */
-/* Menargetkan kontainer menu toolbar, popover, dan search box bawaan tabel agar berwarna Cokelat Tua */
+/* 2. PERBAIKAN JITU UNTUK BILAH BAWAH TABEL (ST.DATAFRAME) */
+/* Menargetkan kontainer luar bilah menu yang berwarna abu-abu pada gambar */
 div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"],
-div[data-testid="stDataFrame"] div[role="dialog"],
-div[data-testid="stDataFrame"] input,
-div[data-testid="stDataFrame"] [data-testid="stDataFrameSearchBox"] {
-    background-color: #5c4033 !important; /* Warna Cokelat Tua */
-    color: #ffffff !important;           /* Teks menjadi Putih pekat */
-    border: 1px solid #ffffff !important;
-    border-radius: 6px;
-    opacity: 1 !important;
+div[data-testid="stDataFrame"] [style*="background-color"] {
+    background-color: #5c4033 !important; /* Mengubah bilah menjadi Cokelat Tua */
 }
 
-/* Memaksa semua elemen anak (ikon, teks, placeholder) di dalam area tersebut menjadi putih */
-div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] *,
-div[data-testid="stDataFrame"] div[role="dialog"] *,
-div[data-testid="stDataFrame"] [data-testid="stDataFrameSearchBox"] * {
-    color: #ffffff !important;
+/* Menembus masuk ke elemen internal Glide Data Grid untuk mengubah warna background toolbar */
+div[data-testid="stDataFrame"] > div {
+    --gdt-toolbar-background: #5c4033 !important;
+}
+
+/* Memaksa semua ikon (SVG), titik tiga, panah, dan teks di dalam bilah tersebut menjadi PUTIH PEKAT */
+div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] svg,
+div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] button,
+div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] span,
+div[data-testid="stDataFrame"] svg {
     fill: #ffffff !important;
-}
-
-/* Mengatur input text di dalam box pencarian tabel agar teks yang diketik berwarna putih */
-div[data-testid="stDataFrame"] input {
     color: #ffffff !important;
-    background-color: #4a3228 !important; /* Cokelat sedikit lebih gelap untuk box input */
 }
 
-/* Efek hover pada tombol-tombol menu di dalam tabel */
-div[data-testid="stDataFrame"] button:hover {
+/* Menghilangkan efek warna putih/abu-abu yang menutupi tombol saat diarahkan kursor */
+div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] button:hover {
     background-color: #704d3e !important;
 }
 
-/* 3. Perbaikan Toolbar pada Grafik (Sinkron menggunakan Cokelat Tua) */
+/* 3. Perbaikan Toolbar pada Grafik */
 [data-testid="stVegaLiteChartToolbar"] {
     background-color: #5c4033 !important;
     border-radius: 4px;
@@ -67,7 +61,7 @@ div[data-testid="stDataFrame"] button:hover {
     fill: #ffffff !important;
 }
 
-/* 4. Modifikasi Tombol Utama (Download CSV) */
+/* 4. Modifikasi Tombol Utama (Download Data CSV) */
 div.stButton > button, div[data-testid="stDownloadButton"] > button {
     background-color: #000000 !important;
     color: #ffffff !important;

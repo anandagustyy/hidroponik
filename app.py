@@ -10,23 +10,49 @@ from datetime import datetime
 st.set_page_config(layout="wide")
 
 # =========================
-# STYLE DARK MODE & TOMBOL HITAM
+# STYLE DARK MODE, GRAFIK TOOLBAR CONTRAST, & TOMBOL HITAM (DIPERBAIKI)
 # =========================
 st.markdown("""
 <style>
+/* 1. Latar Belakang Aplikasi dan Kontainer Utama */
 .stApp {
     background-color: #0e1117;
 }
-
 .block-container {
     color: #ffffff;
 }
-
 h1, h2, h3, h4, h5, h6, p, div {
     color: #ffffff;
 }
 
-/* Modifikasi tombol agar berwarna hitam dengan teks putih */
+/* 2. MEMPERBAIKI KONTRAST TOOLBAR PADA GRAFIK (MEMBUAT TOMBOL TERLIHAT) */
+/* Menargetkan bilah judul di atas grafik */
+[data-testid="stVegaLiteChartToolbar"] {
+    background-color: #000000 !important; /* Latar belakang bilah menjadi hitam */
+    color: #ffffff !important;           /* Teks default menjadi putih */
+    border-radius: 4px;
+    padding: 2px 5px;
+    opacity: 1 !important;              /* Memastikan tidak transparan */
+}
+
+/* Menargetkan semua ikon (titik tiga, panah) di dalam bilah tersebut */
+[data-testid="stVegaLiteChartToolbar"] button svg {
+    fill: #ffffff !important;            /* Ikon SVG menjadi putih */
+    color: #ffffff !important;
+}
+
+/* Menargetkan tombol spesifik */
+[data-testid="stVegaLiteChartToolbar"] [data-testid="stVegaLiteChartToolbarActionContainer"] button {
+    color: #ffffff !important;
+}
+
+/* Menambahkan efek hover pada tombol toolbar agar lebih responsif */
+[data-testid="stVegaLiteChartToolbar"] button:hover {
+    background-color: #333333 !important;
+}
+
+
+/* 3. Modifikasi tombol utama (misal tombol download CSV) */
 div.stButton > button, div[data-testid="stDownloadButton"] > button {
     background-color: #000000 !important;
     color: #ffffff !important;
@@ -37,7 +63,7 @@ div.stButton > button, div[data-testid="stDownloadButton"] > button {
     transition: background-color 0.3s ease;
 }
 
-/* Efek saat tombol diarahkan oleh kursor (hover) */
+/* Efek hover pada tombol utama */
 div.stButton > button:hover, div[data-testid="stDownloadButton"] > button:hover {
     background-color: #222222 !important;
     border-color: #aaaaaa !important;
@@ -156,6 +182,7 @@ if not df.empty:
     
     with graph_col1:
         st.write("pH")
+        # Menggunakan kolom time sebagai index untuk sumbu X grafik
         st.line_chart(df.set_index("time")["ph"])
         
     with graph_col2:

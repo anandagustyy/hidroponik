@@ -25,8 +25,8 @@ h1, h2, h3, h4, h5, h6, p, label {
     color: #ffffff;
 }
 
-/* 2. PERBAIKAN JITU UNTUK BILAH BAWAH TABEL (ST.DATAFRAME) */
-/* Menargetkan kontainer luar bilah menu yang berwarna abu-abu pada gambar */
+/* 2. PERBAIKAN JITU UNTUK BILAH MENU TABEL (ST.DATAFRAME) */
+/* Menargetkan kontainer luar bilah menu agar berwarna Cokelat Tua */
 div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"],
 div[data-testid="stDataFrame"] [style*="background-color"] {
     background-color: #5c4033 !important; /* Mengubah bilah menjadi Cokelat Tua */
@@ -61,8 +61,8 @@ div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] button:hover 
     fill: #ffffff !important;
 }
 
-/* 4. Modifikasi Tombol Utama (Download Data CSV) */
-div.stButton > button, div[data-testid="stDownloadButton"] > button {
+/* 4. Modifikasi Tombol Utama (Jika ada komponen tombol lain di masa depan) */
+div.stButton > button {
     background-color: #000000 !important;
     color: #ffffff !important;
     border: 1px solid #ffffff !important;
@@ -71,7 +71,7 @@ div.stButton > button, div[data-testid="stDownloadButton"] > button {
     font-weight: bold;
     transition: background-color 0.3s ease;
 }
-div.stButton > button:hover, div[data-testid="stDownloadButton"] > button:hover {
+div.stButton > button:hover {
     background-color: #222222 !important;
     border-color: #aaaaaa !important;
 }
@@ -196,18 +196,11 @@ if not df.empty:
         st.line_chart(df.set_index("time")["ppm"])
 
     # =========================
-    # DOWNLOAD & TABEL RIWAYAT
+    # TABEL RIWAYAT LENGKAP
     # =========================
     st.subheader("Riwayat Lengkap")
     
-    csv = df_display.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="Download Data CSV",
-        data=csv,
-        file_name='data_hidroponik.csv',
-        mime='text/csv',
-    )
-    
+    # Menampilkan tabel (fitur download CSV otomatis tersedia di dalam bilah cokelat tua tabel ini)
     st.dataframe(df_display, use_container_width=True)
 else:
     st.info("Belum ada data histori yang tersimpan.")

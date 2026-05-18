@@ -10,11 +10,11 @@ from datetime import datetime
 st.set_page_config(layout="wide")
 
 # =========================
-# STYLE DARK MODE & WARNA COKELAT PADA MENU TABEL
+# STYLE DARK MODE & PERBAIKAN POPUP/SEARCH TABEL (COKELAT & PUTIH)
 # =========================
 st.markdown("""
 <style>
-/* 1. Latar Belakang Aplikasi dan Kontainer Utama */
+/* 1. Latar Belakang Aplikasi Utama */
 .stApp {
     background-color: #0e1117;
 }
@@ -25,30 +25,41 @@ h1, h2, h3, h4, h5, h6, p, label {
     color: #ffffff;
 }
 
-/* 2. PERBAIKAN TOTAL UNTUK BILAH MENU TABEL (ST.DATAFRAME) */
-/* Mengubah background toolbar tabel yang tadinya putih/abu ngaco menjadi COKELAT TUA */
-div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] {
+/* 2. PERBAIKAN UNTUK MENU PENCARIAN / FILTER / TOOLBAR DI BAWAH DOWNLOAD (ST.DATAFRAME) */
+/* Menargetkan kontainer menu toolbar, popover, dan search box bawaan tabel agar berwarna Cokelat Tua */
+div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"],
+div[data-testid="stDataFrame"] div[role="dialog"],
+div[data-testid="stDataFrame"] input,
+div[data-testid="stDataFrame"] [data-testid="stDataFrameSearchBox"] {
     background-color: #5c4033 !important; /* Warna Cokelat Tua */
+    color: #ffffff !important;           /* Teks menjadi Putih pekat */
     border: 1px solid #ffffff !important;
     border-radius: 6px;
-    padding: 4px 8px;
     opacity: 1 !important;
 }
 
-/* Memaksa teks, tombol internal, dan ikon di dalam bilah cokelat tersebut menjadi PUTIH */
-div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] * {
+/* Memaksa semua elemen anak (ikon, teks, placeholder) di dalam area tersebut menjadi putih */
+div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] *,
+div[data-testid="stDataFrame"] div[role="dialog"] *,
+div[data-testid="stDataFrame"] [data-testid="stDataFrameSearchBox"] * {
     color: #ffffff !important;
     fill: #ffffff !important;
 }
 
-/* Mengatur tombol hover di dalam toolbar tabel agar tetap nyaman dilihat */
-div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] button:hover {
+/* Mengatur input text di dalam box pencarian tabel agar teks yang diketik berwarna putih */
+div[data-testid="stDataFrame"] input {
+    color: #ffffff !important;
+    background-color: #4a3228 !important; /* Cokelat sedikit lebih gelap untuk box input */
+}
+
+/* Efek hover pada tombol-tombol menu di dalam tabel */
+div[data-testid="stDataFrame"] button:hover {
     background-color: #704d3e !important;
 }
 
-/* 3. Perbaikan Toolbar pada Grafik (Agar ikut aman dan sinkron) */
+/* 3. Perbaikan Toolbar pada Grafik (Sinkron menggunakan Cokelat Tua) */
 [data-testid="stVegaLiteChartToolbar"] {
-    background-color: #5c4033 !important; /* Warna Cokelat Tua */
+    background-color: #5c4033 !important;
     border-radius: 4px;
     opacity: 1 !important;
 }

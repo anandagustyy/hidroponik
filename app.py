@@ -10,7 +10,7 @@ from datetime import datetime
 st.set_page_config(layout="wide")
 
 # =========================
-# STYLE DARK MODE, GRAFIK TOOLBAR CONTRAST, & TOMBOL HITAM (DIPERBAIKI)
+# STYLE DARK MODE & WARNA COKELAT PADA MENU TABEL
 # =========================
 st.markdown("""
 <style>
@@ -21,38 +21,42 @@ st.markdown("""
 .block-container {
     color: #ffffff;
 }
-h1, h2, h3, h4, h5, h6, p, div {
+h1, h2, h3, h4, h5, h6, p, label {
     color: #ffffff;
 }
 
-/* 2. MEMPERBAIKI KONTRAST TOOLBAR PADA GRAFIK (MEMBUAT TOMBOL TERLIHAT) */
-/* Menargetkan bilah judul di atas grafik */
+/* 2. PERBAIKAN TOTAL UNTUK BILAH MENU TABEL (ST.DATAFRAME) */
+/* Mengubah background toolbar tabel yang tadinya putih/abu ngaco menjadi COKELAT TUA */
+div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] {
+    background-color: #5c4033 !important; /* Warna Cokelat Tua */
+    border: 1px solid #ffffff !important;
+    border-radius: 6px;
+    padding: 4px 8px;
+    opacity: 1 !important;
+}
+
+/* Memaksa teks, tombol internal, dan ikon di dalam bilah cokelat tersebut menjadi PUTIH */
+div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] * {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+}
+
+/* Mengatur tombol hover di dalam toolbar tabel agar tetap nyaman dilihat */
+div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] button:hover {
+    background-color: #704d3e !important;
+}
+
+/* 3. Perbaikan Toolbar pada Grafik (Agar ikut aman dan sinkron) */
 [data-testid="stVegaLiteChartToolbar"] {
-    background-color: #000000 !important; /* Latar belakang bilah menjadi hitam */
-    color: #ffffff !important;           /* Teks default menjadi putih */
+    background-color: #5c4033 !important; /* Warna Cokelat Tua */
     border-radius: 4px;
-    padding: 2px 5px;
-    opacity: 1 !important;              /* Memastikan tidak transparan */
+    opacity: 1 !important;
 }
-
-/* Menargetkan semua ikon (titik tiga, panah) di dalam bilah tersebut */
 [data-testid="stVegaLiteChartToolbar"] button svg {
-    fill: #ffffff !important;            /* Ikon SVG menjadi putih */
-    color: #ffffff !important;
+    fill: #ffffff !important;
 }
 
-/* Menargetkan tombol spesifik */
-[data-testid="stVegaLiteChartToolbar"] [data-testid="stVegaLiteChartToolbarActionContainer"] button {
-    color: #ffffff !important;
-}
-
-/* Menambahkan efek hover pada tombol toolbar agar lebih responsif */
-[data-testid="stVegaLiteChartToolbar"] button:hover {
-    background-color: #333333 !important;
-}
-
-
-/* 3. Modifikasi tombol utama (misal tombol download CSV) */
+/* 4. Modifikasi Tombol Utama (Download CSV) */
 div.stButton > button, div[data-testid="stDownloadButton"] > button {
     background-color: #000000 !important;
     color: #ffffff !important;
@@ -62,8 +66,6 @@ div.stButton > button, div[data-testid="stDownloadButton"] > button {
     font-weight: bold;
     transition: background-color 0.3s ease;
 }
-
-/* Efek hover pada tombol utama */
 div.stButton > button:hover, div[data-testid="stDownloadButton"] > button:hover {
     background-color: #222222 !important;
     border-color: #aaaaaa !important;
@@ -182,7 +184,6 @@ if not df.empty:
     
     with graph_col1:
         st.write("pH")
-        # Menggunakan kolom time sebagai index untuk sumbu X grafik
         st.line_chart(df.set_index("time")["ph"])
         
     with graph_col2:

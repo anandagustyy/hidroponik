@@ -4,14 +4,10 @@ import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 from datetime import datetime
 
-# =========================
 # CONFIG
-# =========================
 st.set_page_config(layout="wide")
 
-# =========================
 # STYLE DARK MODE & TOMBOL HITAM
-# =========================
 st.markdown("""
 <style>
 .stApp {
@@ -45,22 +41,16 @@ div.stButton > button:hover, div[data-testid="stDownloadButton"] > button:hover 
 </style>
 """, unsafe_allow_html=True)
 
-# =========================
 # AUTO REFRESH
-# =========================
 st_autorefresh(interval=30000, key="refresh")
 
 st.title("Smart Hydroponic Monitoring")
 
-# =========================
 # FIREBASE
-# =========================
 url = "https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json"
 history_url = "https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json"
 
-# =========================
 # AMBIL DATA
-# =========================
 try:
     data = requests.get(url).json()
     ph = float(data.get("ph", 0))
@@ -69,9 +59,7 @@ except Exception:
     ph = 0.0
     ppm = 0
 
-# =========================
 # SIMPAN HISTORI
-# =========================
 new_data = {
     "time": str(datetime.now()),
     "ph": ph,
@@ -82,25 +70,13 @@ try:
 except Exception:
     pass
 
-# =========================
-# LAYOUT UTAMA (ANGKA METRIK)
-# =========================
+# LAYOUT UTAMA 
 col1, col2 = st.columns(2)
 
-with col1:
-    st.subheader("pH")
-    st.metric(label="pH", value=f"{ph:.2f}")
-
-with col2:
-    st.subheader("PPM")
-    st.metric(label="PPM", value=f"{ppm}")
-
-# =========================
-# STATUS TEXT ONLY (KUSTOM WARNA)
-# =========================
+# STATUS TEXT
 st.subheader("Status Nutrisi dan Keasaman")
 
-# Logika Warna Teks pH
+# Teks pH
 if 0 <= ph < 3.00:
     st.markdown("Status pH: <span style='color: #FF0000; font-weight: bold;'>Terlalu Asam</span>", unsafe_allow_html=True)
 elif 3.01 <= ph < 5.49:
@@ -112,7 +88,7 @@ elif 7.01 < ph < 10.00:
 elif ph >= 10.01:
     st.markdown("Status pH: <span style='color: #0000FF; font-weight: bold;'>Terlalu Basa</span>", unsafe_allow_html=True)
 
-# Logika Warna Teks PPM
+# Teks PPM
 if 0 <= ppm <= 200:
     st.markdown("Status PPM: <span style='color: #FF0000; font-weight: bold;'>Nutrisi Sangat Rendah</span>", unsafe_allow_html=True)
 elif 201 <= ppm <= 499:
@@ -124,9 +100,7 @@ elif 1201 <= ppm <= 1500:
 elif ppm >= 1501:
     st.markdown("Status PPM: <span style='color: #0000FF; font-weight: bold;'>Nutrisi Terlalu Banyak</span>", unsafe_allow_html=True)
 
-# =========================
-# PROSES DATA HISTORI
-# =========================
+# HISTORY
 try:
     history_data = requests.get(history_url).json()
 except Exception:
@@ -164,9 +138,7 @@ if not df.empty:
         st.write("PPM")
         st.line_chart(df.set_index("time")["ppm"])
 
-    # =========================
-    # DOWNLOAD & TABEL RIWAYAT
-    # =========================
+    # DOWNLOAD 
     st.subheader("Riwayat Lengkap")
     
     csv = df_display.to_csv(index=False).encode('utf-8')

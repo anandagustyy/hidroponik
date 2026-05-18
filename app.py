@@ -10,9 +10,8 @@ from datetime import datetime
 st.set_page_config(layout="wide")
 
 # =========================
-# STYLE DARK MODE (DIPERBAIKI)
+# STYLE DARK MODE & TOMBOL HITAM
 # =========================
-# Memperbaiki kontras warna teks di dalam alert box agar tidak tabrakan dengan warna background bawaan Streamlit
 st.markdown("""
 <style>
 .stApp {
@@ -27,10 +26,21 @@ h1, h2, h3, h4, h5, h6, p, div {
     color: #ffffff;
 }
 
-/* Memastikan teks di dalam alert box (success, info, warning, error) tetap terbaca dengan jelas */
-div[data-testid="stAlert"] p {
-    color: #000000 !important;
-    font-weight: 500;
+/* Modifikasi tombol agar berwarna hitam dengan teks putih */
+div.stButton > button, div[data-testid="stDownloadButton"] > button {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+    border: 1px solid #ffffff !important;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+/* Efek saat tombol diarahkan oleh kursor (hover) */
+div.stButton > button:hover, div[data-testid="stDownloadButton"] > button:hover {
+    background-color: #222222 !important;
+    border-color: #aaaaaa !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -79,32 +89,40 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("pH")
-    st.metric(label="Nilai pH Saat Ini", value=f"{ph:.2f}")
+    st.metric(label="pH", value=f"{ph:.2f}")
 
 with col2:
     st.subheader("PPM")
-    st.metric(label="Nilai PPM Saat Ini", value=f"{ppm} ppm")
+    st.metric(label="PPM", value=f"{ppm}")
 
 # =========================
-# NOTIFIKASI STATUS & WARNA (DIYESUAIKAN DENGAN STANDAR)
+# STATUS TEXT ONLY (KUSTOM WARNA)
 # =========================
 st.subheader("Status Nutrisi dan Keasaman")
 
-# Logika Pewarnaan pH (Merah = Bahaya/Asam, Kuning = Peringatan/Basa, Hijau = Ideal)
-if ph < 5.5:
-    st.error("Status: pH terlalu asam (kurang dari 5.5)")
-elif ph > 6.5:
-    st.warning("Status: pH terlalu basa (lebih dari 6.5)")
-else:
-    st.success("Status: pH normal (ideal untuk tanaman)")
+# Logika Warna Teks pH
+if 0 <= ph < 3.00:
+    st.markdown("Status pH: <span style='color: #FF0000; font-weight: bold;'>Terlalu Asam</span>", unsafe_allow_html=True)
+elif 3.01 <= ph < 5.49:
+    st.markdown("Status pH: <span style='color: #FFA500; font-weight: bold;'>Asam</span>", unsafe_allow_html=True)
+elif 5.50 <= ph <= 7.00:
+    st.markdown("Status pH: <span style='color: #00FF00; font-weight: bold;'>Ideal</span>", unsafe_allow_html=True)
+elif 7.01 < ph < 10.00:
+    st.markdown("Status pH: <span style='color: #00FFFF; font-weight: bold;'>Basa</span>", unsafe_allow_html=True)
+elif ph >= 10.01:
+    st.markdown("Status pH: <span style='color: #0000FF; font-weight: bold;'>Terlalu Basa</span>", unsafe_allow_html=True)
 
-# Logika Pewarnaan PPM (Merah = Kurang, Hijau = Ideal, Biru/Kuning = Terlalu Tinggi)
-if ppm < 500:
-    st.error("Status: Nutrisi terlalu rendah (kurang dari 500 ppm)")
+# Logika Warna Teks PPM
+if 0 <= ppm <= 200:
+    st.markdown("Status PPM: <span style='color: #FF0000; font-weight: bold;'>Nutrisi Sangat Rendah</span>", unsafe_allow_html=True)
+elif 201 <= ppm <= 499:
+    st.markdown("Status PPM: <span style='color: #FFA500; font-weight: bold;'>Kekurangan Nutrisi</span>", unsafe_allow_html=True)
 elif 500 <= ppm <= 1200:
-    st.success("Status: Nutrisi ideal (500 - 1200 ppm)")
-else:
-    st.info("Status: Nutrisi terlalu tinggi (lebih dari 1200 ppm)")
+    st.markdown("Status PPM: <span style='color: #00FF00; font-weight: bold;'>Ideal</span>", unsafe_allow_html=True)
+elif 1201 <= ppm <= 1500:
+    st.markdown("Status PPM: <span style='color: #00FFFF; font-weight: bold;'>Nutrisi Berlebih</span>", unsafe_allow_html=True)
+elif ppm >= 1501:
+    st.markdown("Status PPM: <span style='color: #0000FF; font-weight: bold;'>Nutrisi Terlalu Banyak</span>", unsafe_allow_html=True)
 
 # =========================
 # PROSES DATA HISTORI
@@ -139,11 +157,11 @@ if not df.empty:
     graph_col1, graph_col2 = st.columns(2)
     
     with graph_col1:
-        st.write("Tren Nilai pH")
+        st.write("pH")
         st.line_chart(df.set_index("time")["ph"])
         
     with graph_col2:
-        st.write("Tren Nilai PPM")
+        st.write("PPM")
         st.line_chart(df.set_index("time")["ppm"])
 
     # =========================

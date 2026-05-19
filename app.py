@@ -163,14 +163,12 @@ else:
     ppm_color = "#0000FF" # Biru Tua
     ppm_status = "Nutrisi Terlalu Banyak"
 
-# Opsi fungsi untuk me-render HTML Sinyal Bar secara akumulatif
+# Fungsi untuk merender Sinyal Bar secara akumulatif
 def render_signal(level, color):
     bars = []
     for i in range(1, 6):
-        # Jika i kurang dari atau sama dengan level status saat ini, nyalakan warna spesifiknya
         current_color = color if i <= level else "#333d4b"
         bars.append(f"<div class='signal-bar bar-{i}' style='background-color: {current_color};'></div>")
-    
     return f"<div class='signal-container'>{''.join(bars)}</div>"
 
 
@@ -180,12 +178,11 @@ def render_signal(level, color):
 main_col1, main_col2 = st.columns(2)
 
 with main_col1:
-    # Memisahkan area metrik dan bar sinyal berdampingan kiri-kanan
     sub_col1, sub_col2 = st.columns([2, 1])
     with sub_col1:
         st.metric(label="pH", value=f"{ph:.2f}")
     with sub_col2:
-        st.markdown("<p style='margin-bottom:-10px; font-size:14px; color:#aaa;'>Sinyal pH</p>", unsafe_allow_html=True)
+        # Menampilkan indikator sinyal tepat di samping angka metrik
         st.markdown(render_signal(ph_level, ph_color), unsafe_allow_html=True)
 
 with main_col2:
@@ -193,12 +190,12 @@ with main_col2:
     with sub_col3:
         st.metric(label="PPM", value=f"{ppm}")
     with sub_col4:
-        st.markdown("<p style='margin-bottom:-10px; font-size:14px; color:#aaa;'>Sinyal PPM</p>", unsafe_allow_html=True)
+        # Menampilkan indikator sinyal tepat di samping angka metrik
         st.markdown(render_signal(ppm_level, ppm_color), unsafe_allow_html=True)
 
 
 # =========================
-# STATUS TEXT (WARNA DEAFULT PUTIH)
+# STATUS TEXT (WARNA DEFAULT PUTIH)
 # =========================
 st.subheader("Status Nutrisi dan Keasaman")
 st.write(f"Status pH: **{ph_status}**")

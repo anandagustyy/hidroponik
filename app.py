@@ -217,7 +217,7 @@ if history_data:
 df = pd.DataFrame(rows)
 
 if not df.empty:
-    df["time"] = pd.to_datetime(df["time"])
+    df["time"] = pd.to_datetime(df["time"], unit='ms')
     df["ph"] = pd.to_numeric(df["ph"], errors='coerce')
     df["ppm"] = pd.to_numeric(df["ppm"], errors='coerce')
     df = df.dropna()

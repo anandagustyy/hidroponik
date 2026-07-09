@@ -1,6 +1,7 @@
 import requests
 import time
 import random
+import calendar
 from datetime import datetime
 
 # URL Firebase History proyekmu
@@ -55,14 +56,12 @@ if history_data:
         if isinstance(value, dict) and "time" in value:
             raw_time = value["time"]
             
-            # Cek apakah format waktu berupa timestamp milidetik atau teks biasa
             try:
                 if isinstance(raw_time, (int, float)):
                     waktu_data = datetime.fromtimestamp(raw_time / 1000.0)
                 else:
                     waktu_data = datetime.strptime(str(raw_time).split('.')[0], "%Y-%m-%d %H:%M:%S")
                 
-                # Jika waktu data masuk ke dalam rentang 4 - 26 juni, HAPUS!
                 if MULAI_PEMBERSIHAN <= waktu_data <= AKHIR_PEMBERSIHAN:
                     delete_url = f"{FIREBASE_BASE_URL}/{key}.json"
                     req = requests.delete(delete_url)
@@ -70,7 +69,6 @@ if history_data:
                         terhapus += 1
                         print(f"-> Berhasil menghapus data sampah tanggal: {waktu_data}")
             except Exception:
-                # Jika format waktu rusak parah/tidak dikenali, biarkan saja atau lewati
                 pass
     print(f"Selesai menyaring! Total {terhapus} data lama di rentang Juni berhasil dibersihkan.")
 else:
@@ -78,9 +76,9 @@ else:
 
 
 # ==========================================
-# PROSES PENYUNTIKAN DATA BARU PER JAM
+# PROSES PENYUNTIKAN DATA BARU PER JAM (VERSI FIX TIME)
 # ==========================================
-print("\n3. Memulai penyuntikan data per jam yang baru dan rapi...")
+print("\n3. Memulai penyuntikan data per jam yang baru ke database...")
 total_terkirim = 0
 daftar_tanggal = sorted(list(DATA_JURNAL_HARIAN.keys()))
 
@@ -93,11 +91,9 @@ for idx, tanggal_str in enumerate(daftar_tanggal):
     else:
         target_ph_besok, target_ppm_besok = target_ph, target_ppm
 
-    # Buat data 24 jam nonstop
     for jam in range(24):
         faktor_progres = jam / 24.0
         
-        # Skenario khusus Tanggal 4 Juni agar mulai dari pH 7.01 sesuai request
         if tanggal_str == "2026-06-04":
             ph_base = 7.01 - (faktor_progres * (7.01 - 6.12))
             ppm_base = 1105 - (faktor_progres * 50)
@@ -108,14 +104,15 @@ for idx, tanggal_str in enumerate(daftar_tanggal):
         ph_final = round(ph_base + random.uniform(-0.04, 0.04), 2)
         ppm_final = int(ppm_base + random.randint(-8, 8))
         
-        # Kunci nilai tepat di jam 12:00 agar sesuai dengan tabel jurnal utama
         if jam == 12:
             ph_final = target_ph
             ppm_final = target_ppm
 
         waktu_gabung = f"{tanggal_str} {jam:02d}:00:00"
         waktu_obj = datetime.strptime(waktu_gabung, "%Y-%m-%d %H:%M:%S")
-        timestamp_ms = int(time.mktime(waktu_obj.timetuple()) * 1000)
+        
+        # PERBAIKAN UTAMA: Menggunakan calendar.timegm untuk mengunci koordinat waktu absolut milidetik
+        timestamp_ms = int(calendar.timegm(waktu_obj.utctimetuple()) * 1000)
         
         payload = {
             "ph": float(ph_final),
@@ -127,10 +124,10 @@ for idx, tanggal_str in enumerate(daftar_tanggal):
             response = requests.post(f"{FIREBASE_BASE_URL}.json", json=payload)
             if response.status_code == 200:
                 total_terkirim += 1
-                print(f"[{total_terkirim}] DISUNTIKKAN -> {waktu_gabung} | pH: {ph_final} | PPM: {ppm_final}")
+                print(f"[{total_terkirim}] BERHASIL MASUK -> {waktu_gabung} | pH: {ph_final} | PPM: {ppm_final}")
         except Exception as e:
             print(f"Gagal menyuntikkan data {waktu_gabung}: {e}")
             
         time.sleep(0.01)
 
-print(f"\n[SUKSES TOTAL] Pembersihan selektif dan pengisian data baru per jam selesai dilakukan!")
+print(f"\n[SUKSES] Pengisian {total_terkirim} data baru per jam selesai. Silakan refresh halaman Streamlit kamu!")

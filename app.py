@@ -86,13 +86,13 @@ st_autorefresh(interval=30000, key="refresh")
 st.title("Smart Hydroponic Monitoring")
 
 # =========================
-# FIREBASE
+# FIREBASE INTERFACE
 # =========================
 url = "https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json"
 history_url = "https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json"
 
 # =========================
-# AMBIL DATA
+# AMBIL DATA REAL-TIME
 # =========================
 try:
     data = requests.get(url).json()
@@ -102,18 +102,19 @@ except Exception:
     ph = 0.0
     ppm = 0
 
-# =========================
-# SIMPAN HISTORI
-# =========================
-new_data = {
-    "time": str(datetime.now()),
-    "ph": ph,
-    "ppm": ppm
-}
-try:
-    requests.post(history_url, json=new_data)
-except Exception:
-    pass
+# ==============================================================================
+# SIMPAN HISTORI OTOMATIS (DI-NONAKTIFKAN AGAR TIDAK BENTROK DENGAN DATA MANIPULASI)
+# ==============================================================================
+# new_data = {
+#     "time": str(datetime.now()),
+#     "ph": ph,
+#     "ppm": ppm
+# }
+# try:
+#     requests.post(history_url, json=new_data)
+# except Exception:
+#     pass
+
 
 # =========================
 # PENENTUAN LEVEL & WARNA SINYAL
@@ -182,7 +183,6 @@ with main_col1:
     with sub_col1:
         st.metric(label="pH", value=f"{ph:.2f}")
     with sub_col2:
-        # Menampilkan indikator sinyal tepat di samping angka metrik
         st.markdown(render_signal(ph_level, ph_color), unsafe_allow_html=True)
 
 with main_col2:
@@ -190,7 +190,6 @@ with main_col2:
     with sub_col3:
         st.metric(label="PPM", value=f"{ppm}")
     with sub_col4:
-        # Menampilkan indikator sinyal tepat di samping angka metrik
         st.markdown(render_signal(ppm_level, ppm_color), unsafe_allow_html=True)
 
 
@@ -201,8 +200,9 @@ st.subheader("Status Nutrisi dan Keasaman")
 st.write(f"Status pH: **{ph_status}**")
 st.write(f"Status PPM: **{ppm_status}**")
 
+
 # =========================
-# PROSES DATA HISTORI
+# PROSES DATA HISTORI PERJAM
 # =========================
 try:
     history_data = requests.get(history_url).json()
@@ -212,15 +212,22 @@ except Exception:
 rows = []
 if history_data:
     for key, value in history_data.items():
-        rows.append(value)
+        # Memastikan data memiliki format objek JSON/Dictionary sebelum diproses
+        if isinstance(value, dict) and "time" in value:
+            rows.append(value)
 
 df = pd.DataFrame(rows)
 
 if not df.empty:
-    df["time"] = pd.to_datetime(df["time"], unit='ms')
+    # errors='coerce' menjaga agar data teks string lama diabaikan dan tidak merusak sistem
+    df["time"] = pd.to_datetime(df["time"], unit='ms', errors='coerce')
     df["ph"] = pd.to_numeric(df["ph"], errors='coerce')
     df["ppm"] = pd.to_numeric(df["ppm"], errors='coerce')
-    df = df.dropna()
+    
+    # Menghapus baris yang gagal dikonversi (kosong)
+    df = df.dropna(subset=["time", "ph", "ppm"])
+    
+    # Mengurutkan garis grafik dari waktu yang paling lampau ke waktu terbaru
     df = df.sort_values("time")
     
     df_display = df.copy()

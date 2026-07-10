@@ -4,14 +4,10 @@ import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 from datetime import datetime
 
-# =========================
 # CONFIG
-# =========================
 st.set_page_config(layout="wide")
 
-# =========================
 # STYLE DARK MODE & INTERFASIAL SINYAL
-# =========================
 st.markdown("""
 <style>
 /* 1. Latar Belakang Aplikasi Utama */
@@ -78,22 +74,16 @@ div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] button:hover 
 </style>
 """, unsafe_allow_html=True)
 
-# =========================
 # AUTO REFRESH
-# =========================
 st_autorefresh(interval=30000, key="refresh")
 
 st.title("Smart Hydroponic Monitoring")
 
-# =========================
 # FIREBASE INTERFACE
-# =========================
 url = "https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json"
 history_url = "https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json"
 
-# =========================
 # AMBIL DATA REAL-TIME
-# =========================
 try:
     data = requests.get(url).json()
     ph = float(data.get("ph", 0))
@@ -102,23 +92,8 @@ except Exception:
     ph = 0.0
     ppm = 0
 
-# ==============================================================================
-# SIMPAN HISTORI OTOMATIS (DI-NONAKTIFKAN AGAR TIDAK BENTROK DENGAN DATA MANIPULASI)
-# ==============================================================================
-# new_data = {
-#     "time": str(datetime.now()),
-#     "ph": ph,
-#     "ppm": ppm
-# }
-# try:
-#     requests.post(history_url, json=new_data)
-# except Exception:
-#     pass
 
-
-# =========================
 # PENENTUAN LEVEL & WARNA SINYAL
-# =========================
 
 # Logika Sinyal pH
 if 0 <= ph < 3.00:
@@ -173,9 +148,7 @@ def render_signal(level, color):
     return f"<div class='signal-container'>{''.join(bars)}</div>"
 
 
-# =========================
 # LAYOUT UTAMA (ANGKA METRIK & SINYAL)
-# =========================
 main_col1, main_col2 = st.columns(2)
 
 with main_col1:
@@ -193,17 +166,13 @@ with main_col2:
         st.markdown(render_signal(ppm_level, ppm_color), unsafe_allow_html=True)
 
 
-# =========================
 # STATUS TEXT (WARNA DEFAULT PUTIH)
-# =========================
 st.subheader("Status Nutrisi dan Keasaman")
 st.write(f"Status pH: **{ph_status}**")
 st.write(f"Status PPM: **{ppm_status}**")
 
 
-# =========================
-# PROSES DATA HISTORI PERJAM
-# =========================
+# PROSES DATA HISTORI DARI ESP32
 try:
     history_data = requests.get(history_url).json()
 except Exception:
@@ -212,30 +181,27 @@ except Exception:
 rows = []
 if history_data:
     for key, value in history_data.items():
-        # Memastikan data memiliki format objek JSON/Dictionary sebelum diproses
         if isinstance(value, dict) and "time" in value:
             rows.append(value)
 
 df = pd.DataFrame(rows)
 
 if not df.empty:
-    # errors='coerce' menjaga agar data teks string lama diabaikan dan tidak merusak sistem
+    # Mengonversi format milidetik dari ESP32 menjadi tanggal objek, sisa data teks string otomatis dilewati
     df["time"] = pd.to_datetime(df["time"], unit='ms', errors='coerce')
     df["ph"] = pd.to_numeric(df["ph"], errors='coerce')
     df["ppm"] = pd.to_numeric(df["ppm"], errors='coerce')
     
-    # Menghapus baris yang gagal dikonversi (kosong)
+    # Hapus baris data jika terdeteksi kosong/rusak
     df = df.dropna(subset=["time", "ph", "ppm"])
     
-    # Mengurutkan garis grafik dari waktu yang paling lampau ke waktu terbaru
+    # Urutkan berdasarkan waktu maju dari terlama ke terbaru
     df = df.sort_values("time")
     
     df_display = df.copy()
     df_display["time"] = df_display["time"].dt.strftime('%Y-%m-%d %H:%M:%S')
 
-    # =========================
     # GRAFIK MONITORING
-    # =========================
     st.subheader("Grafik Monitoring")
     
     graph_col1, graph_col2 = st.columns(2)
@@ -248,9 +214,7 @@ if not df.empty:
         st.write("PPM")
         st.line_chart(df.set_index("time")["ppm"])
 
-    # =========================
     # TABEL RIWAYAT LENGKAP
-    # =========================
     st.subheader("Riwayat Lengkap")
     st.dataframe(df_display, use_container_width=True)
 else:

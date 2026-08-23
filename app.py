@@ -1,221 +1,102 @@
 import streamlit as st
 import requests
 import pandas as pd
-from streamlit_autorefresh import st_autorefresh
+import plotly.express as px
 from datetime import datetime
+import time
 
-# CONFIG
-st.set_page_config(layout="wide")
+st.set_page_config(
+    page_title="Monitoring Hidroponik",
+    page_icon="🌱",
+    layout="wide"
+)
 
-# STYLE DARK MODE & INTERFASIAL SINYAL
-st.markdown("""
-<style>
-/* 1. Latar Belakang Aplikasi Utama */
-.stApp {
-    background-color: #0e1117;
-}
-.block-container {
-    color: #ffffff;
-}
-h1, h2, h3, h4, h5, h6, p, label {
-    color: #ffffff;
-}
+# URL Firebase Realtime Database
+FIREBASE_REALTIME_URL = "https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json"
+FIREBASE_HISTORY_URL  = "https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json"
 
-/* 2. STYLE INDIKATOR SINYAL HP KUSTOM */
-.signal-container {
-    display: flex;
-    align-items: flex-end;
-    gap: 6px;
-    height: 60px;
-    padding-bottom: 5px;
-    margin-left: 15px;
-}
-.signal-bar {
-    width: 10px;
-    background-color: #333d4b; /* Warna default abu-abu saat mati */
-    border-radius: 3px;
-    transition: background-color 0.3s ease;
-}
-/* Tinggi masing-masing tingkatan bar sinyal */
-.bar-1 { height: 20%; }
-.bar-2 { height: 40%; }
-.bar-3 { height: 60%; }
-.bar-4 { height: 80%; }
-.bar-5 { height: 100%; }
+st.title("🌱 Dashboard Monitoring Hidroponik Terkalibrasi")
+st.markdown("Monitoring Parameter pH dan Kepekatan Nutrisi (TDS PPM) secara Realtime.")
 
-/* 3. PERBAIKAN JITU UNTUK BILAH MENU TABEL (ST.DATAFRAME) */
-div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"],
-div[data-testid="stDataFrame"] [style*="background-color"] {
-    background-color: #5c4033 !important;
-}
-div[data-testid="stDataFrame"] > div {
-    --gdt-toolbar-background: #5c4033 !important;
-}
-div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] svg,
-div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] button,
-div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] span,
-div[data-testid="stDataFrame"] svg {
-    fill: #ffffff !important;
-    color: #ffffff !important;
-}
-div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] button:hover {
-    background-color: #704d3e !important;
-}
-
-/* 4. Perbaikan Toolbar pada Grafik */
-[data-testid="stVegaLiteChartToolbar"] {
-    background-color: #5c4033 !important;
-    border-radius: 4px;
-    opacity: 1 !important;
-}
-[data-testid="stVegaLiteChartToolbar"] button svg {
-    fill: #ffffff !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# AUTO REFRESH
-st_autorefresh(interval=30000, key="refresh")
-
-st.title("Smart Hydroponic Monitoring")
-
-# FIREBASE INTERFACE
-url = "https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json"
-history_url = "https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json"
-
-# AMBIL DATA REAL-TIME
+# Ambil data Realtime
 try:
-    data = requests.get(url).json()
-    ph = float(data.get("ph", 0))
-    ppm = int(data.get("ppm", 0))
+    res_realtime = requests.get(FIREBASE_REALTIME_URL).json()
 except Exception:
-    ph = 0.0
-    ppm = 0
+    res_realtime = None
 
-
-# PENENTUAN LEVEL & WARNA SINYAL
-
-# Logika Sinyal pH
-if 0 <= ph < 3.00:
-    ph_level = 1
-    ph_color = "#FF0000" # Merah
-    ph_status = "Terlalu Asam"
-elif 3.01 <= ph < 5.49:
-    ph_level = 2
-    ph_color = "#FFA500" # Oranye
-    ph_status = "Asam"
-elif 5.50 <= ph <= 7.00:
-    ph_level = 3
-    ph_color = "#00FF00" # Hijau
-    ph_status = "Ideal"
-elif 7.01 < ph < 10.00:
-    ph_level = 4
-    ph_color = "#00FFFF" # Biru Muda
-    ph_status = "Basa"
+if res_realtime:
+    ph_val = res_realtime.get("ph", 0.0)
+    ppm_val = res_realtime.get("ppm", 0)
+    status = res_realtime.get("status", "Offline")
 else:
-    ph_level = 5
-    ph_color = "#0000FF" # Biru Tua
-    ph_status = "Terlalu Basa"
+    ph_val, ppm_val, status = 0.0, 0, "Offline"
 
-# Logika Sinyal PPM
-if 0 <= ppm <= 200:
-    ppm_level = 1
-    ppm_color = "#FF0000" # Merah
-    ppm_status = "Nutrisi Sangat Rendah"
-elif 201 <= ppm <= 499:
-    ppm_level = 2
-    ppm_color = "#FFA500" # Oranye
-    ppm_status = "Kekurangan Nutrisi"
-elif 500 <= ppm <= 1200:
-    ppm_level = 3
-    ppm_color = "#00FF00" # Hijau
-    ppm_status = "Ideal"
-elif 1201 <= ppm <= 1500:
-    ppm_level = 4
-    ppm_color = "#00FFFF" # Biru Muda
-    ppm_status = "Nutrisi Berlebih"
-else:
-    ppm_level = 5
-    ppm_color = "#0000FF" # Biru Tua
-    ppm_status = "Nutrisi Terlalu Banyak"
+# Tampilkan Kartu Metrik
+col1, col2, col3 = st.columns(3)
 
-# Fungsi untuk merender Sinyal Bar secara akumulatif
-def render_signal(level, color):
-    bars = []
-    for i in range(1, 6):
-        current_color = color if i <= level else "#333d4b"
-        bars.append(f"<div class='signal-bar bar-{i}' style='background-color: {current_color};'></div>")
-    return f"<div class='signal-container'>{''.join(bars)}</div>"
+with col1:
+    st.metric(label="pH Air Nutrisi", value=f"{ph_val:.2f}")
+    if 5.5 <= ph_val <= 6.5:
+        st.success("Kondisi pH Ideal (5.5 - 6.5)")
+    else:
+        st.warning("pH di Luar Ambang Ideal")
 
+with col2:
+    st.metric(label="TDS Nutrisi", value=f"{ppm_val} PPM")
+    if 500 <= ppm_val <= 1200:
+        st.success("Nutrisi Normal")
+    elif ppm_val < 500:
+        st.info("Nutrisi Kurang")
+    else:
+        st.warning("Nutrisi Pekat")
 
-# LAYOUT UTAMA (ANGKA METRIK & SINYAL)
-main_col1, main_col2 = st.columns(2)
+with col3:
+    st.metric(label="Status Alat", value=status)
+    if status == "Online":
+        st.success("Sistem Terhubung")
+    else:
+        st.error("Sistem Terputus")
 
-with main_col1:
-    sub_col1, sub_col2 = st.columns([2, 1])
-    with sub_col1:
-        st.metric(label="pH", value=f"{ph:.2f}")
-    with sub_col2:
-        st.markdown(render_signal(ph_level, ph_color), unsafe_allow_html=True)
+st.divider()
 
-with main_col2:
-    sub_col3, sub_col4 = st.columns([2, 1])
-    with sub_col3:
-        st.metric(label="PPM", value=f"{ppm}")
-    with sub_col4:
-        st.markdown(render_signal(ppm_level, ppm_color), unsafe_allow_html=True)
+# Ambil data Histori
+st.subheader("📈 Riwayat Data Sensor (Histori)")
 
-
-# STATUS TEXT (WARNA DEFAULT PUTIH)
-st.subheader("Status Nutrisi dan Keasaman")
-st.write(f"Status pH: **{ph_status}**")
-st.write(f"Status PPM: **{ppm_status}**")
-
-
-# PROSES DATA HISTORI DARI ESP32
 try:
-    history_data = requests.get(history_url).json()
+    res_history = requests.get(FIREBASE_HISTORY_URL).json()
 except Exception:
-    history_data = None
+    res_history = None
 
-rows = []
-if history_data:
-    for key, value in history_data.items():
-        if isinstance(value, dict) and "time" in value:
-            rows.append(value)
+if res_history:
+    records = []
+    for key, item in res_history.items():
+        if isinstance(item, dict) and "time" in item:
+            ts = item["time"] / 1000.0  # Konversi dari millisecond
+            records.append({
+                "Waktu": datetime.fromtimestamp(ts),
+                "pH": item.get("ph", 0.0),
+                "PPM": item.get("ppm", 0)
+            })
+    
+    if records:
+        df = pd.DataFrame(records).sort_values("Waktu")
 
-df = pd.DataFrame(rows)
+        chart_col1, chart_col2 = st.columns(2)
+        with chart_col1:
+            fig_ph = px.line(df, x="Waktu", y="pH", title="Grafik Fluktuasi pH", markers=True)
+            st.plotly_chart(fig_ph, use_container_width=True)
 
-if not df.empty:
-    # Mengonversi format milidetik dari ESP32 menjadi tanggal objek, sisa data teks string otomatis dilewati
-    df["time"] = pd.to_datetime(df["time"], unit='ms', errors='coerce')
-    df["ph"] = pd.to_numeric(df["ph"], errors='coerce')
-    df["ppm"] = pd.to_numeric(df["ppm"], errors='coerce')
-    
-    # Hapus baris data jika terdeteksi kosong/rusak
-    df = df.dropna(subset=["time", "ph", "ppm"])
-    
-    # Urutkan berdasarkan waktu maju dari terlama ke terbaru
-    df = df.sort_values("time")
-    
-    df_display = df.copy()
-    df_display["time"] = df_display["time"].dt.strftime('%Y-%m-%d %H:%M:%S')
+        with chart_col2:
+            fig_ppm = px.line(df, x="Waktu", y="PPM", title="Grafik Fluktuasi TDS (PPM)", markers=True)
+            st.plotly_chart(fig_ppm, use_container_width=True)
 
-    # GRAFIK MONITORING
-    st.subheader("Grafik Monitoring")
-    
-    graph_col1, graph_col2 = st.columns(2)
-    
-    with graph_col1:
-        st.write("pH")
-        st.line_chart(df.set_index("time")["ph"])
-        
-    with graph_col2:
-        st.write("PPM")
-        st.line_chart(df.set_index("time")["ppm"])
-
-    # TABEL RIWAYAT LENGKAP
-    st.subheader("Riwayat Lengkap")
-    st.dataframe(df_display, use_container_width=True)
+        with st.expander("Lihat Tabel Data Log"):
+            st.dataframe(df.sort_values("Waktu", ascending=False), use_container_width=True)
+    else:
+        st.info("Belum ada data histori yang tersimpan.")
 else:
-    st.info("Belum ada data histori yang tersimpan.")
+    st.info("Belum ada data histori di Firebase.")
+
+# Auto refresh setiap 5 detik
+time.sleep(10)
+st.rerun()

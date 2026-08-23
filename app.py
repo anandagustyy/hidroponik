@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import pandas as pd
 from streamlit_autorefresh import st_autorefresh
-from datetime import datetime
+import time
 
 # CONFIG
 st.set_page_config(layout="wide", page_title="Smart Hydroponic Monitoring", page_icon="🌱")
@@ -32,18 +32,17 @@ h1, h2, h3, h4, h5, h6, p, label {
 }
 .signal-bar {
     width: 10px;
-    background-color: #333d4b; /* Warna default abu-abu saat mati */
+    background-color: #333d4b;
     border-radius: 3px;
     transition: background-color 0.3s ease;
 }
-/* Tinggi masing-masing tingkatan bar sinyal */
 .bar-1 { height: 20%; }
 .bar-2 { height: 40%; }
 .bar-3 { height: 60%; }
 .bar-4 { height: 80%; }
 .bar-5 { height: 100%; }
 
-/* 3. PERBAIKAN UNTUK BILAH MENU TABEL (ST.DATAFRAME) */
+/* 3. PERBAIKAN BILAH MENU TABEL */
 div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"],
 div[data-testid="stDataFrame"] [style*="background-color"] {
     background-color: #5c4033 !important;
@@ -79,16 +78,15 @@ st_autorefresh(interval=10000, key="refresh_sensor_data")
 
 st.title("🌱 Smart Hydroponic Monitoring")
 
-# FIREBASE INTERFACE
-url = "https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json"
-history_url = "https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json"
-
-# Header HTTP Anti-Cache
+# FIREBASE INTERFACE (Dengan Anti-Cache Query)
+timestamp_param = int(time.time() * 1000)
+url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json?t={timestamp_param}"
+history_url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json?t={timestamp_param}"
 http_headers = {"Cache-Control": "no-cache"}
 
 # AMBIL DATA REAL-TIME
 try:
-    data = requests.get(url, headers=http_headers).json()
+    data = requests.get(url, headers=http_headers, timeout=5).json()
     if isinstance(data, dict):
         ph = float(data.get("ph", 0.0))
         ppm = int(data.get("ppm", 0))
@@ -101,48 +99,47 @@ except Exception:
 # Logika Sinyal pH
 if 0 <= ph < 3.00:
     ph_level = 1
-    ph_color = "#FF0000" # Merah
+    ph_color = "#FF0000"
     ph_status = "Terlalu Asam"
 elif 3.01 <= ph < 5.49:
     ph_level = 2
-    ph_color = "#FFA500" # Oranye
+    ph_color = "#FFA500"
     ph_status = "Asam"
 elif 5.50 <= ph <= 7.00:
     ph_level = 3
-    ph_color = "#00FF00" # Hijau
+    ph_color = "#00FF00"
     ph_status = "Ideal"
 elif 7.01 < ph < 10.00:
     ph_level = 4
-    ph_color = "#00FFFF" # Biru Muda
+    ph_color = "#00FFFF"
     ph_status = "Basa"
 else:
     ph_level = 5
-    ph_color = "#0000FF" # Biru Tua
+    ph_color = "#0000FF"
     ph_status = "Terlalu Basa"
 
 # Logika Sinyal PPM
 if 0 <= ppm <= 200:
     ppm_level = 1
-    ppm_color = "#FF0000" # Merah
+    ppm_color = "#FF0000"
     ppm_status = "Nutrisi Sangat Rendah"
 elif 201 <= ppm <= 499:
     ppm_level = 2
-    ppm_color = "#FFA500" # Oranye
+    ppm_color = "#FFA500"
     ppm_status = "Kekurangan Nutrisi"
 elif 500 <= ppm <= 1200:
     ppm_level = 3
-    ppm_color = "#00FF00" # Hijau
+    ppm_color = "#00FF00"
     ppm_status = "Ideal"
 elif 1201 <= ppm <= 1500:
     ppm_level = 4
-    ppm_color = "#00FFFF" # Biru Muda
+    ppm_color = "#00FFFF"
     ppm_status = "Nutrisi Berlebih"
 else:
     ppm_level = 5
-    ppm_color = "#0000FF" # Biru Tua
+    ppm_color = "#0000FF"
     ppm_status = "Nutrisi Terlalu Banyak"
 
-# Fungsi untuk merender Sinyal Bar
 def render_signal(level, color):
     bars = []
     for i in range(1, 6):
@@ -150,7 +147,7 @@ def render_signal(level, color):
         bars.append(f"<div class='signal-bar bar-{i}' style='background-color: {current_color};'></div>")
     return f"<div class='signal-container'>{''.join(bars)}</div>"
 
-# LAYOUT UTAMA (ANGKA METRIK & SINYAL)
+# LAYOUT UTAMA (METRIK & SINYAL)
 main_col1, main_col2 = st.columns(2)
 
 with main_col1:
@@ -174,9 +171,9 @@ st.write(f"Status PPM: **{ppm_status}**")
 
 st.divider()
 
-# PROSES DATA HISTORI DARI ESP32
+# PROSES DATA HISTORI DARI FIREBASE
 try:
-    history_data = requests.get(history_url, headers=http_headers).json()
+    history_data = requests.get(history_url, headers=http_headers, timeout=5).json()
 except Exception:
     history_data = None
 
@@ -189,23 +186,15 @@ if history_data and isinstance(history_data, dict):
 df = pd.DataFrame(rows)
 
 if not df.empty:
-    # Konversi milidetik Firebase ke format datetime
     df["time"] = pd.to_datetime(df["time"], unit='ms', errors='coerce')
     df["ph"] = pd.to_numeric(df["ph"], errors='coerce')
     df["ppm"] = pd.to_numeric(df["ppm"], errors='coerce')
     
-    # Hapus baris data yang kosong/rusak
     df = df.dropna(subset=["time", "ph", "ppm"])
-    
-    # Urutkan berdasarkan waktu dari terlama ke terbaru untuk grafik
     df = df.sort_values("time")
     
-    df_display = df.copy()
-    df_display["time"] = df_display["time"].dt.strftime('%Y-%m-%d %H:%M:%S')
-
     # GRAFIK MONITORING
     st.subheader("📈 Grafik Monitoring")
-    
     graph_col1, graph_col2 = st.columns(2)
     
     with graph_col1:
@@ -216,8 +205,13 @@ if not df.empty:
         st.write("**Grafik PPM**")
         st.line_chart(df.set_index("time")["ppm"])
 
-    # TABEL RIWAYAT LENGKAP (Terbaru di paling atas)
+    # TABEL RIWAYAT LENGKAP
     st.subheader("📋 Riwayat Lengkap")
-    st.dataframe(df_display.sort_values("time", ascending=False), use_container_width=True)
+    df_display = df.copy()
+    df_display["time"] = df_display["time"].dt.strftime('%Y-%m-%d %H:%M:%S')
+    
+    # Menampilkan data terbaru di baris paling atas
+    df_table = df_display.sort_values("time", ascending=False).reset_index(drop=True)
+    st.dataframe(df_table, use_container_width=True)
 else:
     st.info("Belum ada data histori yang tersimpan.")

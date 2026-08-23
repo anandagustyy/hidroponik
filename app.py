@@ -5,7 +5,7 @@ from streamlit_autorefresh import st_autorefresh
 import time
 
 # CONFIG
-st.set_page_config(layout="wide", page_title="Smart Hydroponic Monitoring", page_icon="🌱")
+st.set_page_config(layout="wide", page_title="Smart Hydroponic Monitoring")
 
 # STYLE DARK MODE & INTERFASIAL SINYAL
 st.markdown("""
@@ -73,12 +73,12 @@ div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] button:hover 
 </style>
 """, unsafe_allow_html=True)
 
-# AUTO REFRESH SETIAP 10 DETIK (10000 ms)
-st_autorefresh(interval=10000, key="refresh_sensor_data")
+# AUTO REFRESH SETIAP 20 DETIK (20000 ms)
+st_autorefresh(interval=20000, key="refresh_sensor_data")
 
-st.title("🌱 Smart Hydroponic Monitoring")
+st.title("Smart Hydroponic Monitoring")
 
-# FIREBASE INTERFACE (Dengan Anti-Cache Query)
+# FIREBASE INTERFACE (Dengan Query Anti-Cache)
 timestamp_param = int(time.time() * 1000)
 url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json?t={timestamp_param}"
 history_url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json?t={timestamp_param}"
@@ -95,50 +95,29 @@ try:
 except Exception:
     ph, ppm = 0.0, 0
 
-# PENENTUAN LEVEL & WARNA SINYAL
 # Logika Sinyal pH
 if 0 <= ph < 3.00:
-    ph_level = 1
-    ph_color = "#FF0000"
-    ph_status = "Terlalu Asam"
+    ph_level, ph_color, ph_status = 1, "#FF0000", "Terlalu Asam"
 elif 3.01 <= ph < 5.49:
-    ph_level = 2
-    ph_color = "#FFA500"
-    ph_status = "Asam"
+    ph_level, ph_color, ph_status = 2, "#FFA500", "Asam"
 elif 5.50 <= ph <= 7.00:
-    ph_level = 3
-    ph_color = "#00FF00"
-    ph_status = "Ideal"
+    ph_level, ph_color, ph_status = 3, "#00FF00", "Ideal"
 elif 7.01 < ph < 10.00:
-    ph_level = 4
-    ph_color = "#00FFFF"
-    ph_status = "Basa"
+    ph_level, ph_color, ph_status = 4, "#00FFFF", "Basa"
 else:
-    ph_level = 5
-    ph_color = "#0000FF"
-    ph_status = "Terlalu Basa"
+    ph_level, ph_color, ph_status = 5, "#0000FF", "Terlalu Basa"
 
 # Logika Sinyal PPM
 if 0 <= ppm <= 200:
-    ppm_level = 1
-    ppm_color = "#FF0000"
-    ppm_status = "Nutrisi Sangat Rendah"
+    ppm_level, ppm_color, ppm_status = 1, "#FF0000", "Nutrisi Sangat Rendah"
 elif 201 <= ppm <= 499:
-    ppm_level = 2
-    ppm_color = "#FFA500"
-    ppm_status = "Kekurangan Nutrisi"
+    ppm_level, ppm_color, ppm_status = 2, "#FFA500", "Kekurangan Nutrisi"
 elif 500 <= ppm <= 1200:
-    ppm_level = 3
-    ppm_color = "#00FF00"
-    ppm_status = "Ideal"
+    ppm_level, ppm_color, ppm_status = 3, "#00FF00", "Ideal"
 elif 1201 <= ppm <= 1500:
-    ppm_level = 4
-    ppm_color = "#00FFFF"
-    ppm_status = "Nutrisi Berlebih"
+    ppm_level, ppm_color, ppm_status = 4, "#00FFFF", "Nutrisi Berlebih"
 else:
-    ppm_level = 5
-    ppm_color = "#0000FF"
-    ppm_status = "Nutrisi Terlalu Banyak"
+    ppm_level, ppm_color, ppm_status = 5, "#0000FF", "Nutrisi Terlalu Banyak"
 
 def render_signal(level, color):
     bars = []
@@ -171,7 +150,7 @@ st.write(f"Status PPM: **{ppm_status}**")
 
 st.divider()
 
-# PROSES DATA HISTORI DARI FIREBASE
+# PROSES DATA HISTORI
 try:
     history_data = requests.get(history_url, headers=http_headers, timeout=5).json()
 except Exception:
@@ -194,7 +173,7 @@ if not df.empty:
     df = df.sort_values("time")
     
     # GRAFIK MONITORING
-    st.subheader("📈 Grafik Monitoring")
+    st.subheader("Grafik Monitoring")
     graph_col1, graph_col2 = st.columns(2)
     
     with graph_col1:
@@ -206,12 +185,11 @@ if not df.empty:
         st.line_chart(df.set_index("time")["ppm"])
 
     # TABEL RIWAYAT LENGKAP
-    st.subheader("📋 Riwayat Lengkap")
+    st.subheader("Riwayat Lengkap")
     df_display = df.copy()
     df_display["time"] = df_display["time"].dt.strftime('%Y-%m-%d %H:%M:%S')
     
-    # Menampilkan data terbaru di baris paling atas
     df_table = df_display.sort_values("time", ascending=False).reset_index(drop=True)
     st.dataframe(df_table, use_container_width=True)
 else:
-    st.info("Belum ada data histori yang tersimpan.")
+    st.info("Belum ada data histori yang tersimpan. Menunggu data baru dari ESP32...")

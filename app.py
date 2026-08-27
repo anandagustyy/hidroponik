@@ -91,8 +91,8 @@ div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] button:hover 
 </style>
 """, unsafe_allow_html=True)
 
-# AUTO REFRESH SETIAP 1 MENIT (60000 ms)
-st_autorefresh(interval=60000, key="refresh_sensor_data")
+# AUTO REFRESH SETIAP 10 DETIK (10000 ms)
+st_autorefresh(interval=10000, key="refresh_sensor_data")
 
 st.title("Smart Hydroponic Monitoring")
 

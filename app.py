@@ -91,8 +91,8 @@ div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] button:hover 
 </style>
 """, unsafe_allow_html=True)
 
-# AUTO REFRESH SETIAP 20 DETIK
-st_autorefresh(interval=20000, key="refresh_sensor_data")
+# AUTO REFRESH SETIAP 1 MENIT (60000 ms)
+st_autorefresh(interval=60000, key="refresh_sensor_data")
 
 st.title("Smart Hydroponic Monitoring")
 
@@ -134,7 +134,7 @@ elif ppm > 1000:
 if alert_messages:
     st.error(f"PERINGATAN SISTEM: {' & '.join(alert_messages)}! Segera lakukan penyesuaian.")
 
-# Kirim Notifikasi Telegram (Cooldown tiap 10 menit agar tidak spam)
+# Kirim Notifikasi Telegram (Cooldown tiap 10 menit)
 if "last_alert_time" not in st.session_state:
     st.session_state.last_alert_time = 0
 
@@ -221,7 +221,7 @@ if history_data and isinstance(history_data, dict):
 df = pd.DataFrame(rows)
 
 if not df.empty:
-    # 1. Konversi dari milidetik ke UTC, lalu ubah ke Zona Waktu Indonesia Barat (WIB)
+    # Konversi waktu ke WIB (Asia/Jakarta)
     df["time"] = pd.to_datetime(df["time"], unit='ms', utc=True).dt.tz_convert('Asia/Jakarta')
     df["ph"] = pd.to_numeric(df["ph"], errors='coerce')
     df["ppm"] = pd.to_numeric(df["ppm"], errors='coerce')
@@ -229,7 +229,6 @@ if not df.empty:
     df = df.dropna(subset=["time", "ph", "ppm"])
     df = df.sort_values("time")
     
-    # 2. Format tampilan string tanggal & jam WIB (tanpa label timezone yang membingungkan)
     df_display = df.copy()
     df_display["time"] = df_display["time"].dt.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -245,12 +244,8 @@ if not df.empty:
         st.write("**Grafik PPM**")
         st.line_chart(df.set_index("time")["ppm"])
 
-    # TABEL RIWAYAT LENGKAP
+    # TABEL RIWAYAT LENGKAP (Tunggal & Terbaru di Atas)
     st.subheader("Riwayat Lengkap")
-    df_table = df_display.sort_values("time", ascending=False).reset_index(drop=True)
-    st.dataframe(df_table, use_container_width=True)
-    
-    # Menampilkan data terbaru di urutan paling atas
     df_table = df_display.sort_values("time", ascending=False).reset_index(drop=True)
     st.dataframe(df_table, use_container_width=True)
 else:

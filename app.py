@@ -221,13 +221,18 @@ if history_data and isinstance(history_data, dict):
 df = pd.DataFrame(rows)
 
 if not df.empty:
-    df["time"] = pd.to_datetime(df["time"], unit='ms', errors='coerce')
+    # 1. Konversi dari milidetik ke UTC, lalu ubah ke Zona Waktu Indonesia Barat (WIB)
+    df["time"] = pd.to_datetime(df["time"], unit='ms', utc=True).dt.tz_convert('Asia/Jakarta')
     df["ph"] = pd.to_numeric(df["ph"], errors='coerce')
     df["ppm"] = pd.to_numeric(df["ppm"], errors='coerce')
     
     df = df.dropna(subset=["time", "ph", "ppm"])
     df = df.sort_values("time")
     
+    # 2. Format tampilan string tanggal & jam WIB (tanpa label timezone yang membingungkan)
+    df_display = df.copy()
+    df_display["time"] = df_display["time"].dt.strftime('%Y-%m-%d %H:%M:%S')
+
     # GRAFIK MONITORING
     st.subheader("Grafik Monitoring")
     graph_col1, graph_col2 = st.columns(2)
@@ -242,8 +247,8 @@ if not df.empty:
 
     # TABEL RIWAYAT LENGKAP
     st.subheader("Riwayat Lengkap")
-    df_display = df.copy()
-    df_display["time"] = df_display["time"].dt.strftime('%Y-%m-%d %H:%M:%S')
+    df_table = df_display.sort_values("time", ascending=False).reset_index(drop=True)
+    st.dataframe(df_table, use_container_width=True)
     
     # Menampilkan data terbaru di urutan paling atas
     df_table = df_display.sort_values("time", ascending=False).reset_index(drop=True)

@@ -106,10 +106,12 @@ history_url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebaseda
 http_headers = {"Cache-Control": "no-cache"}
 
 # ==========================================
-# FITUR GENERATOR DATA LANGSUNG DI STREAMLIT
+# FITUR GENERATOR & RESET DATA DI SIDEBAR
 # ==========================================
 with st.sidebar:
     st.subheader("Panel Kontrol Data")
+    
+    # Tombol Generate Data
     if st.button("Generate & Tambah Data (24 - 28 Ags)", use_container_width=True):
         wib = pytz.timezone('Asia/Jakarta')
         start_dt = wib.localize(datetime(2026, 8, 24, 22, 35, 7))
@@ -154,6 +156,7 @@ with st.sidebar:
             current_ph += noise_ph + pull_ph + drift_ph
             current_ppm += noise_ppm + pull_ppm + drift_ppm
             
+            # Batas Mutlak
             current_ph = max(5.40, min(6.65, current_ph))
             current_ppm = max(540, min(1035, current_ppm))
             
@@ -169,14 +172,24 @@ with st.sidebar:
             current_dt += interval
             total_data += 1
 
-        # Kirim ke Firebase (PATCH agar data manual lama tidak tertimpa)
-        res = requests.patch("https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json", json=payload)
+        # Menggunakan PATCH agar tidak menimpa data manual yang sudah ada
+        res = requests.patch(history_url, json=payload)
         if res.status_code == 200:
             st.success(f"Berhasil menambahkan {total_data} baris data ke Firebase!")
             time.sleep(1)
             st.rerun()
         else:
             st.error("Gagal mengunggah data ke Firebase.")
+
+    # Tombol Hapus Semua Data Histori
+    if st.button("Hapus Semua Riwayat Data", type="primary", use_container_width=True):
+        del_res = requests.delete(history_url)
+        if del_res.status_code == 200:
+            st.success("Seluruh riwayat data berhasil dibersihkan!")
+            time.sleep(1)
+            st.rerun()
+        else:
+            st.error("Gagal menghapus data dari Firebase.")
 
 # AMBIL DATA REAL-TIME
 try:
@@ -189,7 +202,9 @@ try:
 except Exception:
     ph, ppm = 0.0, 0
 
-# EVALUASI ALARM
+# ==========================================
+# EVALUASI ALARM (pH: 5.50 - 6.50 | PPM: 560 - 1000)
+# ==========================================
 ph_is_abnormal = (ph < 5.50 or ph > 6.50)
 ppm_is_abnormal = (ppm < 560 or ppm > 1000)
 
@@ -204,9 +219,11 @@ if ppm < 560:
 elif ppm > 1000:
     alert_messages.append(f"Nutrisi Berlebih ({ppm} PPM)")
 
+# Banner Peringatan di Dashboard Web
 if alert_messages:
     st.error(f"PERINGATAN SISTEM: {' & '.join(alert_messages)}! Segera lakukan penyesuaian.")
 
+# Kirim Notifikasi Telegram (Cooldown 10 menit)
 if "last_alert_time" not in st.session_state:
     st.session_state.last_alert_time = 0
 
@@ -293,6 +310,7 @@ if history_data and isinstance(history_data, dict):
 df = pd.DataFrame(rows)
 
 if not df.empty:
+    # Konversi waktu ke WIB (Asia/Jakarta)
     df["time"] = pd.to_datetime(df["time"], unit='ms', utc=True).dt.tz_convert('Asia/Jakarta')
     df["ph"] = pd.to_numeric(df["ph"], errors='coerce')
     df["ppm"] = pd.to_numeric(df["ppm"], errors='coerce')
@@ -315,7 +333,7 @@ if not df.empty:
         st.write("**Grafik PPM**")
         st.line_chart(df.set_index("time")["ppm"])
 
-    # TABEL RIWAYAT LENGKAP
+    # TABEL RIWAYAT LENGKAP (Tunggal & Terbaru di Atas)
     st.subheader("Riwayat Lengkap")
     df_table = df_display.sort_values("time", ascending=False).reset_index(drop=True)
     st.dataframe(df_table, use_container_width=True)

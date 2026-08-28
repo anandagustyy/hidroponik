@@ -3,3 +3,4 @@ requests
 streamlit-autorefresh
 plotly
 pandas
+pytz

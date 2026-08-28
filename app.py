@@ -111,7 +111,7 @@ http_headers = {"Cache-Control": "no-cache"}
 with st.sidebar:
     st.subheader("Panel Kontrol Data")
     
-    # 1. Tombol Generate Data Simulasi
+    # 1. Tombol Generate Data Dinamis Mirip Manual
     if st.button("Generate & Tambah Data (24 - 28 Ags)", use_container_width=True):
         wib = pytz.timezone('Asia/Jakarta')
         start_dt = wib.localize(datetime(2026, 8, 24, 22, 35, 7))
@@ -126,43 +126,29 @@ with st.sidebar:
         total_data = 0
 
         while current_dt <= end_dt:
-            noise_ph = round(random.uniform(-0.03, 0.03), 2)
-            noise_ppm = random.randint(-6, 6)
-            
-            drift_ph = 0.0
-            drift_ppm = 0.0
-            
-            # Simulasi Fluktuasi Naik pH (~6.65)
-            if current_dt.day == 25 and 10 <= current_dt.hour < 13:
-                drift_ph = 0.18
-            elif current_dt.day == 25 and 13 <= current_dt.hour < 16:
-                drift_ph = -0.16
-                
-            # Simulasi Fluktuasi Turun pH (~5.40)
-            elif current_dt.day == 26 and 2 <= current_dt.hour < 5:
-                drift_ph = -0.18
-            elif current_dt.day == 26 and 5 <= current_dt.hour < 8:
-                drift_ph = 0.16
-                
-            # Simulasi Fluktuasi PPM Nutrisi
-            elif current_dt.day == 27 and 14 <= current_dt.hour < 17:
-                drift_ppm = -50
-            elif current_dt.day == 27 and 17 <= current_dt.hour < 20:
-                drift_ppm = 60
-                
-            pull_ph = (6.00 - current_ph) * 0.12 if drift_ph == 0 else 0
-            pull_ppm = (770 - current_ppm) * 0.12 if drift_ppm == 0 else 0
-            
-            current_ph += noise_ph + pull_ph + drift_ph
-            current_ppm += noise_ppm + pull_ppm + drift_ppm
-            
-            # Batas Nilai
+            # Variasi dinamis meniru pola data manual (lompatan nyata)
+            ph_delta = random.uniform(-0.18, 0.18)
+            ppm_delta = random.randint(-6, 3)
+
+            # Kendali batas agar memantul alami saat mendekati batas luar
+            if current_ph < 5.60:
+                ph_delta += random.uniform(0.08, 0.16)
+            elif current_ph > 6.40:
+                ph_delta -= random.uniform(0.08, 0.16)
+
+            # Siklus penambahan nutrisi air jika PPM turun ke batas bawah
+            if current_ppm < 620:
+                ppm_delta += random.randint(30, 80)
+            elif current_ppm > 920:
+                ppm_delta -= random.randint(20, 50)
+
+            current_ph = round(current_ph + ph_delta, 2)
+            current_ppm = int(current_ppm + ppm_delta)
+
+            # Batas absolut aman
             current_ph = max(5.40, min(6.65, current_ph))
-            current_ppm = max(540, min(1035, current_ppm))
-            
-            current_ph = round(current_ph, 2)
-            current_ppm = int(round(current_ppm))
-            
+            current_ppm = max(545, min(1030, current_ppm))
+
             timestamp_ms = int(current_dt.timestamp() * 1000)
             payload[f"log_{timestamp_ms}"] = {
                 "ph": current_ph,
@@ -172,16 +158,15 @@ with st.sidebar:
             current_dt += interval
             total_data += 1
 
-        # Menggunakan PATCH agar data manual sebelumnya tidak terhapus
         res = requests.patch(history_url, json=payload)
         if res.status_code == 200:
-            st.success(f"Berhasil menambahkan {total_data} baris data ke Firebase!")
+            st.success(f"Berhasil menambahkan {total_data} baris data dinamis ke Firebase!")
             time.sleep(1)
             st.rerun()
         else:
             st.error("Gagal mengunggah data ke Firebase.")
 
-    # 2. Tombol Hapus HANYA Data Generate (Data Manual Lama Aman)
+    # 2. Tombol Hapus HANYA Data Generate (Data Manual 23-24 Ags Tetap Aman)
     if st.button("Hapus Hanya Data Generate", type="primary", use_container_width=True):
         wib = pytz.timezone('Asia/Jakarta')
         start_dt = wib.localize(datetime(2026, 8, 24, 22, 35, 7))
@@ -189,7 +174,6 @@ with st.sidebar:
         interval = timedelta(minutes=30)
         current_dt = start_dt
 
-        # Mengirim payload null ke setiap key generate untuk menghapusnya secara selektif
         delete_payload = {}
         while current_dt <= end_dt:
             timestamp_ms = int(current_dt.timestamp() * 1000)
@@ -198,7 +182,7 @@ with st.sidebar:
 
         del_res = requests.patch(history_url, json=delete_payload)
         if del_res.status_code == 200:
-            st.success("Berhasil menghapus data generate. 58 data manual kamu tetap aman!")
+            st.success("Berhasil menghapus data generate. Data manual lama tetap aman!")
             time.sleep(1)
             st.rerun()
         else:
@@ -215,9 +199,7 @@ try:
 except Exception:
     ph, ppm = 0.0, 0
 
-# ==========================================
-# EVALUASI ALARM (pH: 5.50 - 6.50 | PPM: 560 - 1000)
-# ==========================================
+# EVALUASI ALARM
 ph_is_abnormal = (ph < 5.50 or ph > 6.50)
 ppm_is_abnormal = (ppm < 560 or ppm > 1000)
 
@@ -232,11 +214,9 @@ if ppm < 560:
 elif ppm > 1000:
     alert_messages.append(f"Nutrisi Berlebih ({ppm} PPM)")
 
-# Banner Peringatan di Dashboard Web
 if alert_messages:
     st.error(f"PERINGATAN SISTEM: {' & '.join(alert_messages)}! Segera lakukan penyesuaian.")
 
-# Kirim Notifikasi Telegram (Cooldown 10 menit)
 if "last_alert_time" not in st.session_state:
     st.session_state.last_alert_time = 0
 
@@ -323,7 +303,6 @@ if history_data and isinstance(history_data, dict):
 df = pd.DataFrame(rows)
 
 if not df.empty:
-    # Konversi waktu ke WIB (Asia/Jakarta)
     df["time"] = pd.to_datetime(df["time"], unit='ms', utc=True).dt.tz_convert('Asia/Jakarta')
     df["ph"] = pd.to_numeric(df["ph"], errors='coerce')
     df["ppm"] = pd.to_numeric(df["ppm"], errors='coerce')
@@ -346,7 +325,7 @@ if not df.empty:
         st.write("**Grafik PPM**")
         st.line_chart(df.set_index("time")["ppm"])
 
-    # TABEL RIWAYAT LENGKAP (Tunggal & Terbaru di Atas)
+    # TABEL RIWAYAT LENGKAP
     st.subheader("Riwayat Lengkap")
     df_table = df_display.sort_values("time", ascending=False).reset_index(drop=True)
     st.dataframe(df_table, use_container_width=True)

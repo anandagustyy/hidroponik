@@ -111,7 +111,7 @@ http_headers = {"Cache-Control": "no-cache"}
 with st.sidebar:
     st.subheader("Panel Kontrol Data")
     
-    # Tombol Generate Data
+    # 1. Tombol Generate Data Simulasi
     if st.button("Generate & Tambah Data (24 - 28 Ags)", use_container_width=True):
         wib = pytz.timezone('Asia/Jakarta')
         start_dt = wib.localize(datetime(2026, 8, 24, 22, 35, 7))
@@ -144,7 +144,7 @@ with st.sidebar:
             elif current_dt.day == 26 and 5 <= current_dt.hour < 8:
                 drift_ph = 0.16
                 
-            # Simulasi Fluktuasi PPM
+            # Simulasi Fluktuasi PPM Nutrisi
             elif current_dt.day == 27 and 14 <= current_dt.hour < 17:
                 drift_ppm = -50
             elif current_dt.day == 27 and 17 <= current_dt.hour < 20:
@@ -156,7 +156,7 @@ with st.sidebar:
             current_ph += noise_ph + pull_ph + drift_ph
             current_ppm += noise_ppm + pull_ppm + drift_ppm
             
-            # Batas Mutlak
+            # Batas Nilai
             current_ph = max(5.40, min(6.65, current_ph))
             current_ppm = max(540, min(1035, current_ppm))
             
@@ -172,7 +172,7 @@ with st.sidebar:
             current_dt += interval
             total_data += 1
 
-        # Menggunakan PATCH agar tidak menimpa data manual yang sudah ada
+        # Menggunakan PATCH agar data manual sebelumnya tidak terhapus
         res = requests.patch(history_url, json=payload)
         if res.status_code == 200:
             st.success(f"Berhasil menambahkan {total_data} baris data ke Firebase!")
@@ -181,11 +181,24 @@ with st.sidebar:
         else:
             st.error("Gagal mengunggah data ke Firebase.")
 
-    # Tombol Hapus Semua Data Histori
-    if st.button("Hapus Semua Riwayat Data", type="primary", use_container_width=True):
-        del_res = requests.delete(history_url)
+    # 2. Tombol Hapus HANYA Data Generate (Data Manual Lama Aman)
+    if st.button("Hapus Hanya Data Generate", type="primary", use_container_width=True):
+        wib = pytz.timezone('Asia/Jakarta')
+        start_dt = wib.localize(datetime(2026, 8, 24, 22, 35, 7))
+        end_dt = wib.localize(datetime(2026, 8, 28, 23, 35, 7))
+        interval = timedelta(minutes=30)
+        current_dt = start_dt
+
+        # Mengirim payload null ke setiap key generate untuk menghapusnya secara selektif
+        delete_payload = {}
+        while current_dt <= end_dt:
+            timestamp_ms = int(current_dt.timestamp() * 1000)
+            delete_payload[f"log_{timestamp_ms}"] = None
+            current_dt += interval
+
+        del_res = requests.patch(history_url, json=delete_payload)
         if del_res.status_code == 200:
-            st.success("Seluruh riwayat data berhasil dibersihkan!")
+            st.success("Berhasil menghapus data generate. 58 data manual kamu tetap aman!")
             time.sleep(1)
             st.rerun()
         else:

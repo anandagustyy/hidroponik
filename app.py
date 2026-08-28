@@ -3,6 +3,9 @@ import requests
 import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 import time
+import random
+from datetime import datetime, timedelta
+import pytz
 
 # CONFIG
 st.set_page_config(layout="wide", page_title="Smart Hydroponic Monitoring")
@@ -91,7 +94,7 @@ div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] button:hover 
 </style>
 """, unsafe_allow_html=True)
 
-# AUTO REFRESH SETIAP 10 DETIK (10000 ms)
+# AUTO REFRESH SETIAP 10 DETIK
 st_autorefresh(interval=10000, key="refresh_sensor_data")
 
 st.title("Smart Hydroponic Monitoring")
@@ -101,6 +104,79 @@ timestamp_param = int(time.time() * 1000)
 url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json?t={timestamp_param}"
 history_url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json?t={timestamp_param}"
 http_headers = {"Cache-Control": "no-cache"}
+
+# ==========================================
+# FITUR GENERATOR DATA LANGSUNG DI STREAMLIT
+# ==========================================
+with st.sidebar:
+    st.subheader("Panel Kontrol Data")
+    if st.button("Generate & Tambah Data (24 - 28 Ags)", use_container_width=True):
+        wib = pytz.timezone('Asia/Jakarta')
+        start_dt = wib.localize(datetime(2026, 8, 24, 22, 35, 7))
+        end_dt = wib.localize(datetime(2026, 8, 28, 23, 35, 7))
+
+        current_ph = 5.91
+        current_ppm = 768
+        interval = timedelta(minutes=30)
+        current_dt = start_dt
+
+        payload = {}
+        total_data = 0
+
+        while current_dt <= end_dt:
+            noise_ph = round(random.uniform(-0.03, 0.03), 2)
+            noise_ppm = random.randint(-6, 6)
+            
+            drift_ph = 0.0
+            drift_ppm = 0.0
+            
+            # Simulasi Fluktuasi Naik pH (~6.65)
+            if current_dt.day == 25 and 10 <= current_dt.hour < 13:
+                drift_ph = 0.18
+            elif current_dt.day == 25 and 13 <= current_dt.hour < 16:
+                drift_ph = -0.16
+                
+            # Simulasi Fluktuasi Turun pH (~5.40)
+            elif current_dt.day == 26 and 2 <= current_dt.hour < 5:
+                drift_ph = -0.18
+            elif current_dt.day == 26 and 5 <= current_dt.hour < 8:
+                drift_ph = 0.16
+                
+            # Simulasi Fluktuasi PPM
+            elif current_dt.day == 27 and 14 <= current_dt.hour < 17:
+                drift_ppm = -50
+            elif current_dt.day == 27 and 17 <= current_dt.hour < 20:
+                drift_ppm = 60
+                
+            pull_ph = (6.00 - current_ph) * 0.12 if drift_ph == 0 else 0
+            pull_ppm = (770 - current_ppm) * 0.12 if drift_ppm == 0 else 0
+            
+            current_ph += noise_ph + pull_ph + drift_ph
+            current_ppm += noise_ppm + pull_ppm + drift_ppm
+            
+            current_ph = max(5.40, min(6.65, current_ph))
+            current_ppm = max(540, min(1035, current_ppm))
+            
+            current_ph = round(current_ph, 2)
+            current_ppm = int(round(current_ppm))
+            
+            timestamp_ms = int(current_dt.timestamp() * 1000)
+            payload[f"log_{timestamp_ms}"] = {
+                "ph": current_ph,
+                "ppm": current_ppm,
+                "time": timestamp_ms
+            }
+            current_dt += interval
+            total_data += 1
+
+        # Kirim ke Firebase (PATCH agar data manual lama tidak tertimpa)
+        res = requests.patch("https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json", json=payload)
+        if res.status_code == 200:
+            st.success(f"Berhasil menambahkan {total_data} baris data ke Firebase!")
+            time.sleep(1)
+            st.rerun()
+        else:
+            st.error("Gagal mengunggah data ke Firebase.")
 
 # AMBIL DATA REAL-TIME
 try:
@@ -113,9 +189,7 @@ try:
 except Exception:
     ph, ppm = 0.0, 0
 
-# ==========================================
-# EVALUASI ALARM (pH: 5.50 - 6.50 | PPM: 560 - 1000)
-# ==========================================
+# EVALUASI ALARM
 ph_is_abnormal = (ph < 5.50 or ph > 6.50)
 ppm_is_abnormal = (ppm < 560 or ppm > 1000)
 
@@ -130,11 +204,9 @@ if ppm < 560:
 elif ppm > 1000:
     alert_messages.append(f"Nutrisi Berlebih ({ppm} PPM)")
 
-# Banner Peringatan di Dashboard Web
 if alert_messages:
     st.error(f"PERINGATAN SISTEM: {' & '.join(alert_messages)}! Segera lakukan penyesuaian.")
 
-# Kirim Notifikasi Telegram (Cooldown tiap 10 menit)
 if "last_alert_time" not in st.session_state:
     st.session_state.last_alert_time = 0
 
@@ -221,7 +293,6 @@ if history_data and isinstance(history_data, dict):
 df = pd.DataFrame(rows)
 
 if not df.empty:
-    # Konversi waktu ke WIB (Asia/Jakarta)
     df["time"] = pd.to_datetime(df["time"], unit='ms', utc=True).dt.tz_convert('Asia/Jakarta')
     df["ph"] = pd.to_numeric(df["ph"], errors='coerce')
     df["ppm"] = pd.to_numeric(df["ppm"], errors='coerce')
@@ -244,7 +315,7 @@ if not df.empty:
         st.write("**Grafik PPM**")
         st.line_chart(df.set_index("time")["ppm"])
 
-    # TABEL RIWAYAT LENGKAP (Tunggal & Terbaru di Atas)
+    # TABEL RIWAYAT LENGKAP
     st.subheader("Riwayat Lengkap")
     df_table = df_display.sort_values("time", ascending=False).reset_index(drop=True)
     st.dataframe(df_table, use_container_width=True)

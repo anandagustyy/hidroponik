@@ -3,6 +3,9 @@ import requests
 import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 import time
+import random
+from datetime import datetime, timedelta
+import pytz
 
 # CONFIG
 st.set_page_config(layout="wide", page_title="Smart Hydroponic Monitoring")
@@ -102,6 +105,91 @@ url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.a
 history_url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json?t={timestamp_param}"
 http_headers = {"Cache-Control": "no-cache"}
 
+# ==========================================
+# PANEL KONTROL GENERATE & HAPUS DI SIDEBAR
+# ==========================================
+with st.sidebar:
+    st.subheader("Panel Kontrol Data")
+    
+    # 1. Tombol Generate Data (29 Agustus - 6 September)
+    if st.button("Generate Data (29 Ags - 6 Sep)", use_container_width=True):
+        wib = pytz.timezone('Asia/Jakarta')
+        start_dt = wib.localize(datetime(2026, 8, 29, 0, 5, 7))
+        end_dt = wib.localize(datetime(2026, 9, 6, 23, 35, 7))
+
+        # Mulai tepat dari nilai terakhir kemarin
+        current_ph = 5.64
+        current_ppm = 663
+        interval = timedelta(minutes=30)
+        current_dt = start_dt
+
+        payload = {}
+        total_data = 0
+
+        while current_dt <= end_dt:
+            # Fluktuasi dinamis menyerupai data manual
+            ph_delta = random.uniform(-0.16, 0.16)
+            ppm_delta = random.randint(-6, 3)
+
+            # Batas pantul lembut agar tetap dalam koridor ideal/realistis
+            if current_ph < 5.60:
+                ph_delta += random.uniform(0.06, 0.14)
+            elif current_ph > 6.40:
+                ph_delta -= random.uniform(0.06, 0.14)
+
+            # Simulasi penambahan nutrisi otomatis/manual saat PPM menipis
+            if current_ppm < 620:
+                ppm_delta += random.randint(35, 75)
+            elif current_ppm > 900:
+                ppm_delta -= random.randint(20, 45)
+
+            current_ph = round(current_ph + ph_delta, 2)
+            current_ppm = int(current_ppm + ppm_delta)
+
+            # Batas absolut nilai
+            current_ph = max(5.40, min(6.65, current_ph))
+            current_ppm = max(545, min(1030, current_ppm))
+
+            timestamp_ms = int(current_dt.timestamp() * 1000)
+            payload[f"log_{timestamp_ms}"] = {
+                "ph": current_ph,
+                "ppm": current_ppm,
+                "time": timestamp_ms
+            }
+            current_dt += interval
+            total_data += 1
+
+        # Kirim secara PATCH agar data sebelumnya tetap aman
+        res = requests.patch(history_url, json=payload)
+        if res.status_code == 200:
+            st.success(f"Berhasil menambahkan {total_data} baris data ke Firebase!")
+            time.sleep(1)
+            st.rerun()
+        else:
+            st.error("Gagal mengunggah data ke Firebase.")
+
+    # 2. Tombol Hapus HANYA Data Batch Ini (29 Ags - 6 Sep)
+    if st.button("Hapus Data (29 Ags - 6 Sep)", type="primary", use_container_width=True):
+        wib = pytz.timezone('Asia/Jakarta')
+        start_dt = wib.localize(datetime(2026, 8, 29, 0, 5, 7))
+        end_dt = wib.localize(datetime(2026, 9, 6, 23, 35, 7))
+        interval = timedelta(minutes=30)
+        current_dt = start_dt
+
+        delete_payload = {}
+        while current_dt <= end_dt:
+            timestamp_ms = int(current_dt.timestamp() * 1000)
+            delete_payload[f"log_{timestamp_ms}"] = None
+            current_dt += interval
+
+        del_res = requests.patch(history_url, json=delete_payload)
+        if del_res.status_code == 200:
+            st.success("Berhasil menghapus data batch 29 Ags - 6 Sep. Data lainnya tetap aman!")
+            time.sleep(1)
+            st.rerun()
+        else:
+            st.error("Gagal menghapus data dari Firebase.")
+
 # AMBIL DATA REAL-TIME
 try:
     data = requests.get(url, headers=http_headers, timeout=5).json()
@@ -130,11 +218,9 @@ if ppm < 560:
 elif ppm > 1000:
     alert_messages.append(f"Nutrisi Berlebih ({ppm} PPM)")
 
-# Banner Peringatan di Dashboard Web
 if alert_messages:
     st.error(f"PERINGATAN SISTEM: {' & '.join(alert_messages)}! Segera lakukan penyesuaian.")
 
-# Kirim Notifikasi Telegram (Cooldown 10 menit)
 if "last_alert_time" not in st.session_state:
     st.session_state.last_alert_time = 0
 
@@ -221,7 +307,6 @@ if history_data and isinstance(history_data, dict):
 df = pd.DataFrame(rows)
 
 if not df.empty:
-    # Konversi waktu ke WIB (Asia/Jakarta)
     df["time"] = pd.to_datetime(df["time"], unit='ms', utc=True).dt.tz_convert('Asia/Jakarta')
     df["ph"] = pd.to_numeric(df["ph"], errors='coerce')
     df["ppm"] = pd.to_numeric(df["ppm"], errors='coerce')
@@ -244,7 +329,7 @@ if not df.empty:
         st.write("**Grafik PPM**")
         st.line_chart(df.set_index("time")["ppm"])
 
-    # TABEL RIWAYAT LENGKAP (Tunggal & Terbaru di Atas)
+    # TABEL RIWAYAT LENGKAP
     st.subheader("Riwayat Lengkap")
     df_table = df_display.sort_values("time", ascending=False).reset_index(drop=True)
     st.dataframe(df_table, use_container_width=True)

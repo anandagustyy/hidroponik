@@ -111,14 +111,14 @@ http_headers = {"Cache-Control": "no-cache"}
 with st.sidebar:
     st.subheader("Panel Kontrol Data")
     
-    # 1. Tombol Generate Data (7 Agustus - 13 Agustus)
-    if st.button("Generate Data (7 Ags - 13 Ags)", use_container_width=True):
+    # 1. Tombol Generate Data (7 September - 13 September)
+    if st.button("Generate Data (7 Sep - 13 Sep)", use_container_width=True):
         wib = pytz.timezone('Asia/Jakarta')
-        start_dt = wib.localize(datetime(2026, 8, 7, 0, 5, 7))
-        end_dt = wib.localize(datetime(2026, 8, 13, 23, 35, 7))
+        start_dt = wib.localize(datetime(2026, 9, 7, 0, 5, 7))
+        end_dt = wib.localize(datetime(2026, 9, 13, 23, 35, 7))
 
-        current_ph = 6.15
-        current_ppm = 850
+        current_ph = 6.08
+        current_ppm = 790
         interval = timedelta(minutes=30)
         current_dt = start_dt
 
@@ -135,7 +135,7 @@ with st.sidebar:
             elif current_ph > 6.40:
                 ph_delta -= random.uniform(0.06, 0.14)
 
-            # Simulasi pengisian nutrisi saat PPM turun
+            # Simulasi pengisian nutrisi berkala
             if current_ppm < 620:
                 ppm_delta += random.randint(35, 75)
             elif current_ppm > 900:
@@ -157,7 +157,7 @@ with st.sidebar:
             current_dt += interval
             total_data += 1
 
-        # Menggunakan PATCH agar data lainnya tidak tertimpa
+        # Menggunakan PATCH agar data sebelumnya tetap aman
         res = requests.patch(history_url, json=payload)
         if res.status_code == 200:
             st.success(f"Berhasil menambahkan {total_data} baris data ke Firebase!")
@@ -166,11 +166,11 @@ with st.sidebar:
         else:
             st.error("Gagal mengunggah data ke Firebase.")
 
-    # 2. Tombol Hapus HANYA Data Batch Ini (7 Ags - 13 Ags)
-    if st.button("Hapus Data (7 Ags - 13 Ags)", type="primary", use_container_width=True):
+    # 2. Tombol Hapus HANYA Data Batch Ini (7 Sep - 13 Sep)
+    if st.button("Hapus Data (7 Sep - 13 Sep)", type="primary", use_container_width=True):
         wib = pytz.timezone('Asia/Jakarta')
-        start_dt = wib.localize(datetime(2026, 8, 7, 0, 5, 7))
-        end_dt = wib.localize(datetime(2026, 8, 13, 23, 35, 7))
+        start_dt = wib.localize(datetime(2026, 9, 7, 0, 5, 7))
+        end_dt = wib.localize(datetime(2026, 9, 13, 23, 35, 7))
         interval = timedelta(minutes=30)
         current_dt = start_dt
 
@@ -182,7 +182,7 @@ with st.sidebar:
 
         del_res = requests.patch(history_url, json=delete_payload)
         if del_res.status_code == 200:
-            st.success("Berhasil menghapus data batch 7 Ags - 13 Ags. Data lainnya tetap aman!")
+            st.success("Berhasil menghapus data batch 7 Sep - 13 Sep. Data lainnya tetap aman!")
             time.sleep(1)
             st.rerun()
         else:

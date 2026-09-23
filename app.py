@@ -111,15 +111,14 @@ http_headers = {"Cache-Control": "no-cache"}
 with st.sidebar:
     st.subheader("Panel Kontrol Data")
     
-    # 1. Tombol Generate Data (14 September - 21 September)
-    if st.button("Generate Data (14 Sep - 21 Sep)", use_container_width=True):
+    # Tombol Generate Pola Gigi Gergaji (14 Sep - 21 Sep)
+    if st.button("Generate Gigi Gergaji (14 - 21 Sep)", use_container_width=True):
         wib = pytz.timezone('Asia/Jakarta')
         start_dt = wib.localize(datetime(2026, 9, 14, 0, 5, 7))
         end_dt = wib.localize(datetime(2026, 9, 21, 23, 35, 7))
 
-        # Mulai dari rentang aman di bawah 700
         current_ph = 6.02
-        current_ppm = 660
+        current_ppm = 650
         interval = timedelta(minutes=30)
         current_dt = start_dt
 
@@ -127,27 +126,24 @@ with st.sidebar:
         total_data = 0
 
         while current_dt <= end_dt:
-            ph_delta = random.uniform(-0.16, 0.16)
-            ppm_delta = random.randint(-5, 3)
+            # 1. LOGIKA GIGI GERGAJI PPM (Rentang 600 - 690)
+            # Jika mendekati batas bawah ~608-614, pompa otomatis menambah nutrisi naik ke ~675-690
+            if current_ppm <= random.randint(608, 615):
+                current_ppm += random.randint(55, 75)
+            else:
+                # Penyerapan alami perlahan oleh tanaman (-1 sampai -4 PPM per 30 menit)
+                current_ppm -= random.randint(1, 4)
 
-            # Batas pantul lembut pH
-            if current_ph < 5.60:
-                ph_delta += random.uniform(0.06, 0.14)
-            elif current_ph > 6.40:
-                ph_delta -= random.uniform(0.06, 0.14)
+            # Batas ketat: tidak boleh tembus 700 dan tidak boleh di bawah 600
+            current_ppm = max(600, min(690, current_ppm))
 
-            # Batas pantul PPM (dijaga agar tidak melewati 700)
-            if current_ppm < 590:
-                ppm_delta += random.randint(15, 30)
-            elif current_ppm > 680:
-                ppm_delta -= random.randint(12, 25)
-
-            current_ph = round(current_ph + ph_delta, 2)
-            current_ppm = int(current_ppm + ppm_delta)
-
-            # KUNCI BATAS ABSOLUT: pH 5.40 - 6.65, PPM MAX 700
-            current_ph = max(5.40, min(6.65, current_ph))
-            current_ppm = max(550, min(700, current_ppm))
+            # 2. LOGIKA pH (Alami 5.60 - 6.40)
+            ph_delta = random.uniform(-0.12, 0.12)
+            if current_ph < 5.65:
+                ph_delta += random.uniform(0.05, 0.10)
+            elif current_ph > 6.35:
+                ph_delta -= random.uniform(0.05, 0.10)
+            current_ph = round(max(5.45, min(6.60, current_ph + ph_delta)), 2)
 
             timestamp_ms = int(current_dt.timestamp() * 1000)
             payload[f"log_{timestamp_ms}"] = {
@@ -158,16 +154,16 @@ with st.sidebar:
             current_dt += interval
             total_data += 1
 
-        # Kirim secara PATCH agar data riwayat sebelumnya tetap utuh
+        # Patch langsung menimpa data 14-21 September yang sebelumnya datar
         res = requests.patch(history_url, json=payload)
         if res.status_code == 200:
-            st.success(f"Berhasil menambahkan {total_data} baris data ke Firebase!")
+            st.success(f"Berhasil memperbarui {total_data} data ke pola gigi gergaji (600-690 PPM)!")
             time.sleep(1)
             st.rerun()
         else:
             st.error("Gagal mengunggah data ke Firebase.")
 
-    # 2. Tombol Hapus HANYA Data Batch Ini (14 Sep - 21 Sep)
+    # Tombol Hapus HANYA Data Batch Ini (14 Sep - 21 Sep)
     if st.button("Hapus Data (14 Sep - 21 Sep)", type="primary", use_container_width=True):
         wib = pytz.timezone('Asia/Jakarta')
         start_dt = wib.localize(datetime(2026, 9, 14, 0, 5, 7))
@@ -183,7 +179,7 @@ with st.sidebar:
 
         del_res = requests.patch(history_url, json=delete_payload)
         if del_res.status_code == 200:
-            st.success("Berhasil menghapus data batch 14 Sep - 21 Sep. Data lama tetap aman!")
+            st.success("Data 14 Sep - 21 Sep berhasil dihapus!")
             time.sleep(1)
             st.rerun()
         else:
@@ -200,9 +196,7 @@ try:
 except Exception:
     ph, ppm = 0.0, 0
 
-# ==========================================
-# EVALUASI ALARM (pH: 5.50 - 6.50 | PPM: 560 - 1000)
-# ==========================================
+# EVALUASI ALARM
 ph_is_abnormal = (ph < 5.50 or ph > 6.50)
 ppm_is_abnormal = (ppm < 560 or ppm > 1000)
 

@@ -117,9 +117,9 @@ with st.sidebar:
         start_dt = wib.localize(datetime(2026, 9, 14, 0, 5, 7))
         end_dt = wib.localize(datetime(2026, 9, 21, 23, 35, 7))
 
-        # Titik awal melanjutkan batch 13 September
+        # Mulai dari rentang aman di bawah 700
         current_ph = 6.02
-        current_ppm = 775
+        current_ppm = 660
         interval = timedelta(minutes=30)
         current_dt = start_dt
 
@@ -128,26 +128,26 @@ with st.sidebar:
 
         while current_dt <= end_dt:
             ph_delta = random.uniform(-0.16, 0.16)
-            ppm_delta = random.randint(-6, 3)
+            ppm_delta = random.randint(-5, 3)
 
-            # Batas pantul lembut menjaga rentang aman
+            # Batas pantul lembut pH
             if current_ph < 5.60:
                 ph_delta += random.uniform(0.06, 0.14)
             elif current_ph > 6.40:
                 ph_delta -= random.uniform(0.06, 0.14)
 
-            # Simulasi pengisian nutrisi saat PPM menipis
-            if current_ppm < 620:
-                ppm_delta += random.randint(35, 75)
-            elif current_ppm > 900:
-                ppm_delta -= random.randint(20, 45)
+            # Batas pantul PPM (dijaga agar tidak melewati 700)
+            if current_ppm < 590:
+                ppm_delta += random.randint(15, 30)
+            elif current_ppm > 680:
+                ppm_delta -= random.randint(12, 25)
 
             current_ph = round(current_ph + ph_delta, 2)
             current_ppm = int(current_ppm + ppm_delta)
 
-            # Batas absolut
+            # KUNCI BATAS ABSOLUT: pH 5.40 - 6.65, PPM MAX 700
             current_ph = max(5.40, min(6.65, current_ph))
-            current_ppm = max(545, min(1030, current_ppm))
+            current_ppm = max(550, min(700, current_ppm))
 
             timestamp_ms = int(current_dt.timestamp() * 1000)
             payload[f"log_{timestamp_ms}"] = {

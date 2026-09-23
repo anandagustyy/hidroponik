@@ -111,14 +111,14 @@ http_headers = {"Cache-Control": "no-cache"}
 with st.sidebar:
     st.subheader("Panel Kontrol Data")
     
-    # 1. Tombol Generate Data Penyerapan (Rentang 590 - 720 PPM)
-    if st.button("Generate Penyerapan (14 - 21 Sep)", use_container_width=True):
+    # 1. Tombol Generate Pola Penyerapan (590 - 730 PPM)
+    if st.button("Generate Penyerapan (590 - 730 PPM)", use_container_width=True):
         wib = pytz.timezone('Asia/Jakarta')
         start_dt = wib.localize(datetime(2026, 9, 14, 0, 5, 7))
         end_dt = wib.localize(datetime(2026, 9, 21, 23, 35, 7))
 
-        current_ph = 6.00
-        current_ppm = 710
+        current_ph = 6.15
+        current_ppm = 722
         interval = timedelta(minutes=30)
         current_dt = start_dt
 
@@ -126,26 +126,29 @@ with st.sidebar:
         total_data = 0
 
         while current_dt <= end_dt:
-            # Siklus Penyerapan & Dosing Nutrisi
-            if current_ppm <= random.randint(592, 605):
-                # Pengisian / penambahan nutrisi kembali ke ambang atas
-                current_ppm = random.randint(698, 720)
+            # 1. Logika Penyerapan & Dosing PPM (Meniru Data Asli)
+            if current_ppm <= random.randint(592, 606):
+                # Pompa otomatis menambah nutrisi naik ke kisaran 680 - 725 PPM
+                ppm_jump = random.randint(65, 110)
+                current_ppm += ppm_jump
             else:
-                # Penyerapan alami oleh tanaman per 30 menit
-                absorption_rate = random.uniform(2.0, 4.5)
-                sensor_jitter = random.uniform(-1.5, 1.5)
-                current_ppm = round(current_ppm - absorption_rate + sensor_jitter)
+                # 72% probabilitas penyerapan nutrisi oleh tanaman (-1 s/d -6 PPM)
+                # 28% probabilitas fluktuasi/jitter sensor kecil (+1 s/d +3 PPM)
+                if random.random() < 0.72:
+                    current_ppm -= random.randint(1, 6)
+                else:
+                    current_ppm += random.randint(1, 3)
 
-            # Batas absolut PPM: 590 s/d 720
-            current_ppm = int(max(590, min(720, current_ppm)))
+            # Batas absolut PPM: tidak boleh kurang dari 590 dan tidak lebih dari 730
+            current_ppm = max(590, min(730, current_ppm))
 
-            # Fluktuasi pH Alami (5.45 - 6.60)
-            ph_noise = random.uniform(-0.10, 0.10)
-            if current_ph < 5.65:
-                ph_noise += random.uniform(0.04, 0.08)
+            # 2. Logika Fluktuasi pH Meniru Data Lapangan (5.45 - 6.55)
+            ph_delta = random.uniform(-0.15, 0.15)
+            if current_ph < 5.60:
+                ph_delta += random.uniform(0.06, 0.14)
             elif current_ph > 6.35:
-                ph_noise -= random.uniform(0.04, 0.08)
-            current_ph = round(max(5.45, min(6.60, current_ph + ph_noise)), 2)
+                ph_delta -= random.uniform(0.06, 0.14)
+            current_ph = round(max(5.45, min(6.55, current_ph + ph_delta)), 2)
 
             timestamp_ms = int(current_dt.timestamp() * 1000)
             payload[f"log_{timestamp_ms}"] = {
@@ -156,10 +159,10 @@ with st.sidebar:
             current_dt += interval
             total_data += 1
 
-        # Patch langsung menimpa rentang 14-21 September yang sebelumnya
+        # Patch langsung menggantikan batch 14 - 21 September
         res = requests.patch(history_url, json=payload)
         if res.status_code == 200:
-            st.success(f"Berhasil memperbarui {total_data} data penyerapan nutrisi (590-720 PPM)!")
+            st.success(f"Berhasil memperbarui {total_data} data penyerapan nutrisi (590-730 PPM)!")
             time.sleep(1)
             st.rerun()
         else:
@@ -215,9 +218,11 @@ if ppm < 560:
 elif ppm > 1000:
     alert_messages.append(f"Nutrisi Berlebih ({ppm} PPM)")
 
+# Banner Peringatan di Dashboard Web
 if alert_messages:
     st.error(f"PERINGATAN SISTEM: {' & '.join(alert_messages)}! Segera lakukan penyesuaian.")
 
+# Kirim Notifikasi Telegram (Cooldown 10 menit)
 if "last_alert_time" not in st.session_state:
     st.session_state.last_alert_time = 0
 

@@ -7,9 +7,7 @@ import time
 # CONFIG
 st.set_page_config(layout="wide", page_title="Smart Hydroponic Monitoring")
 
-# ==========================================
-# KONFIGURASI BOT TELEGRAM (AKTIF)
-# ==========================================
+# CONFIG BOT TELEGRAM 
 TELEGRAM_BOT_TOKEN = "8946114296:AAH_T6wvZbBtkOmlKD-yDzVLrYQlDP0Yf4k"
 TELEGRAM_CHAT_ID   = "5375308615"
 
@@ -25,10 +23,8 @@ def send_telegram_alert(message):
     except Exception:
         pass
 
-# STYLE DARK MODE & INTERFASIAL SINYAL
 st.markdown("""
 <style>
-/* 1. Latar Belakang Aplikasi Utama */
 .stApp {
     background-color: #0e1117;
 }
@@ -39,7 +35,6 @@ h1, h2, h3, h4, h5, h6, p, label {
     color: #ffffff;
 }
 
-/* 2. STYLE INDIKATOR SINYAL HP KUSTOM */
 .signal-container {
     display: flex;
     align-items: flex-end;
@@ -60,7 +55,6 @@ h1, h2, h3, h4, h5, h6, p, label {
 .bar-4 { height: 80%; }
 .bar-5 { height: 100%; }
 
-/* 3. PERBAIKAN BILAH MENU TABEL */
 div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"],
 div[data-testid="stDataFrame"] [style*="background-color"] {
     background-color: #5c4033 !important;
@@ -79,7 +73,6 @@ div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] button:hover 
     background-color: #704d3e !important;
 }
 
-/* 4. Perbaikan Toolbar pada Grafik */
 [data-testid="stVegaLiteChartToolbar"] {
     background-color: #5c4033 !important;
     border-radius: 4px;
@@ -96,7 +89,7 @@ st_autorefresh(interval=10000, key="refresh_sensor_data")
 
 st.title("Smart Hydroponic Monitoring")
 
-# FIREBASE INTERFACE (Dengan Anti-Cache Query)
+# FIREBASE INTERFACE 
 timestamp_param = int(time.time() * 1000)
 url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json?t={timestamp_param}"
 history_url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json?t={timestamp_param}"
@@ -113,9 +106,7 @@ try:
 except Exception:
     ph, ppm = 0.0, 0
 
-# ==========================================
-# EVALUASI ALARM (pH: 5.50 - 6.50 | PPM: 560 - 1000)
-# ==========================================
+# ALARM BATAS AMBANG (pH: 5.50 - 6.50 | PPM: 560 - 1000)
 ph_is_abnormal = (ph < 5.50 or ph > 6.50)
 ppm_is_abnormal = (ppm < 560 or ppm > 1000)
 
@@ -134,7 +125,7 @@ elif ppm > 1000:
 if alert_messages:
     st.error(f"PERINGATAN SISTEM: {' & '.join(alert_messages)}! Segera lakukan penyesuaian.")
 
-# Kirim Notifikasi Telegram (Cooldown 10 menit)
+# Kirim Notif Telegram (Cooldown 10 menit)
 if "last_alert_time" not in st.session_state:
     st.session_state.last_alert_time = 0
 
@@ -182,7 +173,7 @@ def render_signal(level, color):
         bars.append(f"<div class='signal-bar bar-{i}' style='background-color: {current_color};'></div>")
     return f"<div class='signal-container'>{''.join(bars)}</div>"
 
-# LAYOUT UTAMA (METRIK & SINYAL)
+# LAYOUT (METRIK & SINYAL)
 main_col1, main_col2 = st.columns(2)
 
 with main_col1:
@@ -206,7 +197,7 @@ st.write(f"Status PPM: **{ppm_status}** (Rentang Batas: 560 - 1000 PPM)")
 
 st.divider()
 
-# PROSES DATA HISTORI DARI FIREBASE
+# PROSES DATA HISTORI FIREBASE
 try:
     history_data = requests.get(history_url, headers=http_headers, timeout=5).json()
 except Exception:
@@ -244,7 +235,7 @@ if not df.empty:
         st.write("**Grafik PPM**")
         st.line_chart(df.set_index("time")["ppm"])
 
-    # TABEL RIWAYAT LENGKAP (Tunggal & Terbaru di Atas)
+    # TABEL RIWAYAT 
     st.subheader("Riwayat Lengkap")
     df_table = df_display.sort_values("time", ascending=False).reset_index(drop=True)
     st.dataframe(df_table, use_container_width=True)

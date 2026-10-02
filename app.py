@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 import time
+import pytz
 
 # CONFIG
 st.set_page_config(layout="wide", page_title="Smart Hydroponic Monitoring")

@@ -4,11 +4,14 @@ import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 import time
 import pytz
+from datetime import datetime
 
 # CONFIG
 st.set_page_config(layout="wide", page_title="Smart Hydroponic Monitoring")
 
-# CONFIG BOT TELEGRAM 
+# ==========================================
+# KONFIGURASI BOT TELEGRAM (AKTIF)
+# ==========================================
 TELEGRAM_BOT_TOKEN = "8946114296:AAH_T6wvZbBtkOmlKD-yDzVLrYQlDP0Yf4k"
 TELEGRAM_CHAT_ID   = "5375308615"
 
@@ -24,8 +27,10 @@ def send_telegram_alert(message):
     except Exception:
         pass
 
+# STYLE DARK MODE & INTERFASIAL SINYAL
 st.markdown("""
 <style>
+/* 1. Latar Belakang Aplikasi Utama */
 .stApp {
     background-color: #0e1117;
 }
@@ -36,6 +41,7 @@ h1, h2, h3, h4, h5, h6, p, label {
     color: #ffffff;
 }
 
+/* 2. STYLE INDIKATOR SINYAL HP KUSTOM */
 .signal-container {
     display: flex;
     align-items: flex-end;
@@ -56,6 +62,7 @@ h1, h2, h3, h4, h5, h6, p, label {
 .bar-4 { height: 80%; }
 .bar-5 { height: 100%; }
 
+/* 3. PERBAIKAN BILAH MENU TABEL */
 div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"],
 div[data-testid="stDataFrame"] [style*="background-color"] {
     background-color: #5c4033 !important;
@@ -74,6 +81,7 @@ div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] button:hover 
     background-color: #704d3e !important;
 }
 
+/* 4. Perbaikan Toolbar pada Grafik */
 [data-testid="stVegaLiteChartToolbar"] {
     background-color: #5c4033 !important;
     border-radius: 4px;
@@ -90,11 +98,47 @@ st_autorefresh(interval=10000, key="refresh_sensor_data")
 
 st.title("Smart Hydroponic Monitoring")
 
-# FIREBASE INTERFACE 
+# FIREBASE INTERFACE (Dengan Anti-Cache Query)
 timestamp_param = int(time.time() * 1000)
 url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json?t={timestamp_param}"
 history_url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json?t={timestamp_param}"
 http_headers = {"Cache-Control": "no-cache"}
+
+# ==========================================
+# PANEL PEMBERSIH DATA TES DI SIDEBAR
+# ==========================================
+with st.sidebar:
+    st.subheader("Pembersihan Data")
+    
+    # Tombol hapus data yang masuk setelah 14 Oktober 2026 23:35:07 WIB
+    if st.button("Hapus Data Tes (Setelah 14 Okt 23:35)", type="primary", use_container_width=True):
+        try:
+            wib = pytz.timezone('Asia/Jakarta')
+            cutoff_dt = wib.localize(datetime(2026, 10, 14, 23, 35, 7))
+            cutoff_ms = int(cutoff_dt.timestamp() * 1000)
+
+            all_history = requests.get(history_url, headers=http_headers, timeout=10).json()
+            if isinstance(all_history, dict):
+                delete_keys = {}
+                for key, val in all_history.items():
+                    if isinstance(val, dict) and "time" in val:
+                        if val["time"] > cutoff_ms:
+                            delete_keys[key] = None
+                            
+                if delete_keys:
+                    del_res = requests.patch(history_url, json=delete_keys, timeout=15)
+                    if del_res.status_code == 200:
+                        st.success(f"Berhasil menghapus {len(delete_keys)} data tes setelah 14 Okt 23:35!")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error("Gagal menghapus data dari Firebase.")
+                else:
+                    st.info("Data sudah bersih. Tidak ditemukan data setelah 14 Oktober 23:35.")
+            else:
+                st.warning("Tidak ada riwayat data ditemukan di Firebase.")
+        except Exception as e:
+            st.error(f"Terjadi kesalahan: {e}")
 
 # AMBIL DATA REAL-TIME
 try:
@@ -107,7 +151,7 @@ try:
 except Exception:
     ph, ppm = 0.0, 0
 
-# ALARM BATAS AMBANG (pH: 5.50 - 6.50 | PPM: 560 - 1000)
+# EVALUASI ALARM (pH: 5.50 - 6.50 | PPM: 560 - 1000)
 ph_is_abnormal = (ph < 5.50 or ph > 6.50)
 ppm_is_abnormal = (ppm < 560 or ppm > 1000)
 
@@ -126,7 +170,7 @@ elif ppm > 1000:
 if alert_messages:
     st.error(f"PERINGATAN SISTEM: {' & '.join(alert_messages)}! Segera lakukan penyesuaian.")
 
-# Kirim Notif Telegram (Cooldown 10 menit)
+# Kirim Notifikasi Telegram (Cooldown 10 menit)
 if "last_alert_time" not in st.session_state:
     st.session_state.last_alert_time = 0
 
@@ -174,7 +218,7 @@ def render_signal(level, color):
         bars.append(f"<div class='signal-bar bar-{i}' style='background-color: {current_color};'></div>")
     return f"<div class='signal-container'>{''.join(bars)}</div>"
 
-# LAYOUT (METRIK & SINYAL)
+# LAYOUT UTAMA (METRIK & SINYAL)
 main_col1, main_col2 = st.columns(2)
 
 with main_col1:
@@ -198,7 +242,7 @@ st.write(f"Status PPM: **{ppm_status}** (Rentang Batas: 560 - 1000 PPM)")
 
 st.divider()
 
-# PROSES DATA HISTORI FIREBASE
+# PROSES DATA HISTORI DARI FIREBASE
 try:
     history_data = requests.get(history_url, headers=http_headers, timeout=5).json()
 except Exception:
@@ -213,7 +257,6 @@ if history_data and isinstance(history_data, dict):
 df = pd.DataFrame(rows)
 
 if not df.empty:
-    # Konversi waktu ke WIB (Asia/Jakarta)
     df["time"] = pd.to_datetime(df["time"], unit='ms', utc=True).dt.tz_convert('Asia/Jakarta')
     df["ph"] = pd.to_numeric(df["ph"], errors='coerce')
     df["ppm"] = pd.to_numeric(df["ppm"], errors='coerce')
@@ -236,7 +279,7 @@ if not df.empty:
         st.write("**Grafik PPM**")
         st.line_chart(df.set_index("time")["ppm"])
 
-    # TABEL RIWAYAT 
+    # TABEL RIWAYAT LENGKAP
     st.subheader("Riwayat Lengkap")
     df_table = df_display.sort_values("time", ascending=False).reset_index(drop=True)
     st.dataframe(df_table, use_container_width=True)

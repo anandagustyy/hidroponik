@@ -3,12 +3,15 @@ import requests
 import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 import time
-import random
-from datetime import datetime, timedelta
 import pytz
+from datetime import datetime
 
-# CONFIG
-st.set_page_config(layout="wide", page_title="Smart Hydroponic Monitoring")
+# CONFIG (Sidebar dibuat selalu terbuka saat dimuat)
+st.set_page_config(
+    layout="wide",
+    page_title="Smart Hydroponic Monitoring",
+    initial_sidebar_state="expanded"
+)
 
 # ==========================================
 # KONFIGURASI BOT TELEGRAM (AKTIF)
@@ -31,9 +34,12 @@ def send_telegram_alert(message):
 # STYLE DARK MODE & INTERFASIAL SINYAL
 st.markdown("""
 <style>
-/* 1. Latar Belakang Aplikasi Utama */
+/* 1. Latar Belakang Aplikasi Utama & Sidebar */
 .stApp {
     background-color: #0e1117;
+}
+section[data-testid="stSidebar"] {
+    background-color: #161a23;
 }
 .block-container {
     color: #ffffff;
@@ -99,116 +105,47 @@ st_autorefresh(interval=10000, key="refresh_sensor_data")
 
 st.title("Smart Hydroponic Monitoring")
 
-# FIREBASE INTERFACE (Dengan Anti-Cache Query)
+# FIREBASE INTERFACE
 timestamp_param = int(time.time() * 1000)
 url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json?t={timestamp_param}"
 history_url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json?t={timestamp_param}"
 http_headers = {"Cache-Control": "no-cache"}
 
 # ==========================================
-# PANEL KONTROL GENERATE & HAPUS DI SIDEBAR
+# KOMPONEN SIDEBAR (PANEL KONTROL)
 # ==========================================
 with st.sidebar:
-    st.subheader("Panel Kontrol Data")
+    st.header("⚙️ Panel Kontrol Sistem")
+    st.info("Status: Terhubung ke Firebase RTDB")
     
-    # 1. Tombol Generate Data (7 Oktober - 14 Oktober)
-    if st.button("Generate Data (7 Okt - 14 Okt)", use_container_width=True):
-        wib = pytz.timezone('Asia/Jakarta')
-        start_dt = wib.localize(datetime(2026, 10, 7, 0, 5, 7))
-        end_dt = wib.localize(datetime(2026, 10, 14, 23, 35, 7))
-
-        current_ph = 6.02
-        current_ppm = 650
-        interval = timedelta(minutes=30)
-        current_dt = start_dt
-
-        payload = {}
-        total_data = 0
-
-        while current_dt <= end_dt:
-            if current_ppm <= random.randint(592, 606):
-                ppm_jump = random.randint(70, 105)
-                current_ppm += ppm_jump
-            else:
-                if random.random() < 0.72:
-                    current_ppm -= random.randint(1, 6)
-                else:
-                    current_ppm += random.randint(1, 3)
-
-            current_ppm = max(590, min(715, current_ppm))
-
-            ph_delta = random.uniform(-0.15, 0.15)
-            if current_ph < 5.60:
-                ph_delta += random.uniform(0.06, 0.14)
-            elif current_ph > 6.35:
-                ph_delta -= random.uniform(0.06, 0.14)
-            current_ph = round(max(5.45, min(6.55, current_ph + ph_delta)), 2)
-
-            timestamp_ms = int(current_dt.timestamp() * 1000)
-            payload[f"log_{timestamp_ms}"] = {
-                "ph": current_ph,
-                "ppm": current_ppm,
-                "time": timestamp_ms
-            }
-            current_dt += interval
-            total_data += 1
-
-        res = requests.patch(history_url, json=payload)
-        if res.status_code == 200:
-            st.success(f"Berhasil menambahkan {total_data} baris data ke Firebase!")
-            time.sleep(1)
-            st.rerun()
-        else:
-            st.error("Gagal mengunggah data ke Firebase.")
-
-    # 2. Tombol Hapus HANYA Data Batch Ini (7 Okt - 14 Okt)
-    if st.button("Hapus Data (7 Okt - 14 Okt)", use_container_width=True):
-        wib = pytz.timezone('Asia/Jakarta')
-        start_dt = wib.localize(datetime(2026, 10, 7, 0, 5, 7))
-        end_dt = wib.localize(datetime(2026, 10, 14, 23, 35, 7))
-        interval = timedelta(minutes=30)
-        current_dt = start_dt
-
-        delete_payload = {}
-        while current_dt <= end_dt:
-            timestamp_ms = int(current_dt.timestamp() * 1000)
-            delete_payload[f"log_{timestamp_ms}"] = None
-            current_dt += interval
-
-        del_res = requests.patch(history_url, json=delete_payload)
-        if del_res.status_code == 200:
-            st.success("Data batch 7 Okt - 14 Okt berhasil dihapus!")
-            time.sleep(1)
-            st.rerun()
-        else:
-            st.error("Gagal menghapus data dari Firebase.")
-
-    # 3. Tombol Khusus Hapus Data Tes Setelah 14 Okt 23:35
-    if st.button("Hapus Data Tes (> 14 Okt 23:35)", type="primary", use_container_width=True):
-        wib = pytz.timezone('Asia/Jakarta')
-        cutoff_ms = int(wib.localize(datetime(2026, 10, 14, 23, 35, 7)).timestamp() * 1000)
-        
+    st.subheader("Pembersihan Data")
+    st.caption("Gunakan tombol ini untuk membuang data uji coba di atas batas waktu sah (14 Okt 23:35 WIB).")
+    
+    if st.button("Hapus Data Setelah 14 Okt 23:35", type="primary", use_container_width=True):
         try:
-            all_data = requests.get(history_url, headers=http_headers, timeout=10).json()
-            if isinstance(all_data, dict):
+            wib = pytz.timezone('Asia/Jakarta')
+            cutoff_ms = int(wib.localize(datetime(2026, 10, 14, 23, 35, 7)).timestamp() * 1000)
+            
+            raw_hist = requests.get(history_url, headers=http_headers, timeout=10).json()
+            if isinstance(raw_hist, dict):
                 del_payload = {}
-                for k, v in all_data.items():
+                for k, v in raw_hist.items():
                     if isinstance(v, dict) and "time" in v:
                         if v["time"] > cutoff_ms:
                             del_payload[k] = None
                 
                 if del_payload:
-                    res_del = requests.patch(history_url, json=del_payload)
+                    res_del = requests.patch(history_url, json=del_payload, timeout=15)
                     if res_del.status_code == 200:
-                        st.success(f"Berhasil menghapus {len(del_payload)} data tes setelah 14 Okt 23:35!")
+                        st.success(f"Berhasil menghapus {len(del_payload)} entri uji coba!")
                         time.sleep(1)
                         st.rerun()
                     else:
                         st.error("Gagal menghapus data dari Firebase.")
                 else:
-                    st.info("Tidak ada data setelah 14 Okt 23:35. Database sudah bersih.")
+                    st.info("Basis data sudah bersih. Tidak ada data uji coba.")
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error(f"Gagal memproses: {e}")
 
 # AMBIL DATA REAL-TIME
 try:
@@ -221,7 +158,7 @@ try:
 except Exception:
     ph, ppm = 0.0, 0
 
-# EVALUASI ALARM
+# EVALUASI ALARM (pH: 5.50 - 6.50 | PPM: 560 - 1000)
 ph_is_abnormal = (ph < 5.50 or ph > 6.50)
 ppm_is_abnormal = (ppm < 560 or ppm > 1000)
 
@@ -310,7 +247,7 @@ st.write(f"Status PPM: **{ppm_status}** (Rentang Batas: 560 - 1000 PPM)")
 
 st.divider()
 
-# PROSES DATA HISTORI DARI FIREBASE
+# PROSES DATA HISTORI FIREBASE
 try:
     history_data = requests.get(history_url, headers=http_headers, timeout=5).json()
 except Exception:

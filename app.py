@@ -4,14 +4,9 @@ import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 import time
 import pytz
-from datetime import datetime
 
-# CONFIG (Sidebar dibuat selalu terbuka saat dimuat)
-st.set_page_config(
-    layout="wide",
-    page_title="Smart Hydroponic Monitoring",
-    initial_sidebar_state="expanded"
-)
+# CONFIG
+st.set_page_config(layout="wide", page_title="Smart Hydroponic Monitoring")
 
 # ==========================================
 # KONFIGURASI BOT TELEGRAM (AKTIF)
@@ -34,12 +29,9 @@ def send_telegram_alert(message):
 # STYLE DARK MODE & INTERFASIAL SINYAL
 st.markdown("""
 <style>
-/* 1. Latar Belakang Aplikasi Utama & Sidebar */
+/* 1. Latar Belakang Aplikasi Utama */
 .stApp {
     background-color: #0e1117;
-}
-section[data-testid="stSidebar"] {
-    background-color: #161a23;
 }
 .block-container {
     color: #ffffff;
@@ -110,42 +102,6 @@ timestamp_param = int(time.time() * 1000)
 url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json?t={timestamp_param}"
 history_url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json?t={timestamp_param}"
 http_headers = {"Cache-Control": "no-cache"}
-
-# ==========================================
-# KOMPONEN SIDEBAR (PANEL KONTROL)
-# ==========================================
-with st.sidebar:
-    st.header("⚙️ Panel Kontrol Sistem")
-    st.info("Status: Terhubung ke Firebase RTDB")
-    
-    st.subheader("Pembersihan Data")
-    st.caption("Gunakan tombol ini untuk membuang data uji coba di atas batas waktu sah (14 Okt 23:35 WIB).")
-    
-    if st.button("Hapus Data Setelah 14 Okt 23:35", type="primary", use_container_width=True):
-        try:
-            wib = pytz.timezone('Asia/Jakarta')
-            cutoff_ms = int(wib.localize(datetime(2026, 10, 14, 23, 35, 7)).timestamp() * 1000)
-            
-            raw_hist = requests.get(history_url, headers=http_headers, timeout=10).json()
-            if isinstance(raw_hist, dict):
-                del_payload = {}
-                for k, v in raw_hist.items():
-                    if isinstance(v, dict) and "time" in v:
-                        if v["time"] > cutoff_ms:
-                            del_payload[k] = None
-                
-                if del_payload:
-                    res_del = requests.patch(history_url, json=del_payload, timeout=15)
-                    if res_del.status_code == 200:
-                        st.success(f"Berhasil menghapus {len(del_payload)} entri uji coba!")
-                        time.sleep(1)
-                        st.rerun()
-                    else:
-                        st.error("Gagal menghapus data dari Firebase.")
-                else:
-                    st.info("Basis data sudah bersih. Tidak ada data uji coba.")
-        except Exception as e:
-            st.error(f"Gagal memproses: {e}")
 
 # AMBIL DATA REAL-TIME
 try:
@@ -223,7 +179,7 @@ def render_signal(level, color):
         bars.append(f"<div class='signal-bar bar-{i}' style='background-color: {current_color};'></div>")
     return f"<div class='signal-container'>{''.join(bars)}</div>"
 
-# LAYOUT UTAMA (METRIK & SINYAL)
+# LAYOUT (METRIK & SINYAL)
 main_col1, main_col2 = st.columns(2)
 
 with main_col1:

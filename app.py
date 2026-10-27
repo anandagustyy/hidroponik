@@ -6,11 +6,9 @@ import time
 import pytz
 
 # CONFIG
-st.set_page_config(layout="wide", page_title="Smart Hydroponic Monitoring", initial_sidebar_state="expanded")
+st.set_page_config(layout="wide", page_title="Smart Hydroponic Monitoring")
 
-# ==========================================
-# KONFIGURASI BOT TELEGRAM (AKTIF)
-# ==========================================
+# CONFIG BOT TELEGRAM 
 TELEGRAM_BOT_TOKEN = "8946114296:AAH_T6wvZbBtkOmlKD-yDzVLrYQlDP0Yf4k"
 TELEGRAM_CHAT_ID   = "5375308615"
 
@@ -26,10 +24,8 @@ def send_telegram_alert(message):
     except Exception:
         pass
 
-# STYLE DARK MODE & INTERFASIAL SINYAL
 st.markdown("""
 <style>
-/* 1. Latar Belakang Aplikasi Utama */
 .stApp {
     background-color: #0e1117;
 }
@@ -40,7 +36,6 @@ h1, h2, h3, h4, h5, h6, p, label {
     color: #ffffff;
 }
 
-/* 2. STYLE INDIKATOR SINYAL HP KUSTOM */
 .signal-container {
     display: flex;
     align-items: flex-end;
@@ -61,7 +56,6 @@ h1, h2, h3, h4, h5, h6, p, label {
 .bar-4 { height: 80%; }
 .bar-5 { height: 100%; }
 
-/* 3. PERBAIKAN BILAH MENU TABEL */
 div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"],
 div[data-testid="stDataFrame"] [style*="background-color"] {
     background-color: #5c4033 !important;
@@ -80,7 +74,6 @@ div[data-testid="stDataFrame"] div[data-testid="stElementToolbar"] button:hover 
     background-color: #704d3e !important;
 }
 
-/* 4. Perbaikan Toolbar pada Grafik */
 [data-testid="stVegaLiteChartToolbar"] {
     background-color: #5c4033 !important;
     border-radius: 4px;
@@ -97,93 +90,24 @@ st_autorefresh(interval=10000, key="refresh_sensor_data")
 
 st.title("Smart Hydroponic Monitoring")
 
-# FIREBASE INTERFACE
+# FIREBASE INTERFACE 
 timestamp_param = int(time.time() * 1000)
 url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/sensor.json?t={timestamp_param}"
 history_url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json?t={timestamp_param}"
 http_headers = {"Cache-Control": "no-cache"}
 
-# ==========================================
-# AMBIL DATA DARI FIREBASE (DEFAULT)
-# ==========================================
+# AMBIL DATA REAL-TIME
 try:
     data = requests.get(url, headers=http_headers, timeout=5).json()
     if isinstance(data, dict):
-        ph_real = float(data.get("ph", 0.0))
-        ppm_real = int(data.get("ppm", 0))
+        ph = float(data.get("ph", 0.0))
+        ppm = int(data.get("ppm", 0))
     else:
-        ph_real, ppm_real = 0.0, 0
+        ph, ppm = 0.0, 0
 except Exception:
-    ph_real, ppm_real = 0.0, 0
+    ph, ppm = 0.0, 0
 
-# ==========================================
-# PANEL PENGUJIAN SKRIPSI DI SIDEBAR
-# ==========================================
-with st.sidebar:
-    st.header("🧪 Pengujian Status Skripsi")
-    st.caption("Pilih kondisi status untuk simulasi pengujian UI.")
-    
-    mode_simulasi = st.checkbox("Aktifkan Mode Pengujian Skripsi", value=False)
-    
-    if mode_simulasi:
-        st.subheader("1. Simulasi Status pH (5 Kondisi)")
-        pilihan_ph = st.selectbox(
-            "Pilih Bar pH:",
-            [
-                "Bar 1: Terlalu Asam (Merah | pH < 3.00)",
-                "Bar 2: Asam (Oranye | 3.01 - 5.49)",
-                "Bar 3: Ideal (Hijau | 5.50 - 6.50)",
-                "Bar 4: Basa (Cyan | 6.51 - 8.50)",
-                "Bar 5: Terlalu Basa (Biru | pH > 8.50)"
-            ],
-            index=2
-        )
-        
-        st.subheader("2. Simulasi Status Nutrisi (5 Kondisi)")
-        pilihan_ppm = st.selectbox(
-            "Pilih Bar PPM:",
-            [
-                "Bar 1: Nutrisi Sangat Rendah (Merah | 0 - 200 PPM)",
-                "Bar 2: Kekurangan Nutrisi (Oranye | 201 - 559 PPM)",
-                "Bar 3: Ideal (Hijau | 560 - 1000 PPM)",
-                "Bar 4: Nutrisi Berlebih (Cyan | 1001 - 1300 PPM)",
-                "Bar 5: Nutrisi Terlalu Banyak (Biru | > 1300 PPM)"
-            ],
-            index=2
-        )
-        
-        # Mapping nilai manipulasi pH
-        if "Bar 1" in pilihan_ph:
-            ph = 2.10
-        elif "Bar 2" in pilihan_ph:
-            ph = 4.50
-        elif "Bar 3" in pilihan_ph:
-            ph = 6.00
-        elif "Bar 4" in pilihan_ph:
-            ph = 7.20
-        else:
-            ph = 9.50
-
-        # Mapping nilai manipulasi PPM
-        if "Bar 1" in pilihan_ppm:
-            ppm = 120
-        elif "Bar 2" in pilihan_ppm:
-            ppm = 420
-        elif "Bar 3" in pilihan_ppm:
-            ppm = 700
-        elif "Bar 4" in pilihan_ppm:
-            ppm = 1150
-        else:
-            ppm = 1500
-            
-        st.info(f"Nilai Uji Aktif:\n- pH = **{ph:.2f}**\n- PPM = **{ppm}**")
-    else:
-        ph = ph_real
-        ppm = ppm_real
-
-# ==========================================
-# EVALUASI ALARM (pH: 5.50 - 6.50 | PPM: 560 - 1000)
-# ==========================================
+# ALARM BATAS AMBANG (pH: 5.50 - 6.50 | PPM: 560 - 1000)
 ph_is_abnormal = (ph < 5.50 or ph > 6.50)
 ppm_is_abnormal = (ppm < 560 or ppm > 1000)
 
@@ -202,23 +126,22 @@ elif ppm > 1000:
 if alert_messages:
     st.error(f"PERINGATAN SISTEM: {' & '.join(alert_messages)}! Segera lakukan penyesuaian.")
 
-# Kirim Notif Telegram (Cooldown 10 menit, dinonaktifkan saat mode simulasi aktif agar tidak spam)
-if not mode_simulasi:
-    if "last_alert_time" not in st.session_state:
-        st.session_state.last_alert_time = 0
+# Kirim Notif Telegram (Cooldown 10 menit)
+if "last_alert_time" not in st.session_state:
+    st.session_state.last_alert_time = 0
 
-    current_time = time.time()
-    if (ph_is_abnormal or ppm_is_abnormal) and (current_time - st.session_state.last_alert_time > 600):
-        st.session_state.last_alert_time = current_time
-        tele_msg = (
-            f"*PERINGATAN SISTEM HIDROPONIK*\n\n"
-            f"Terdeteksi kondisi di luar ambang batas ideal:\n"
-            f"• Nilai pH: *{ph:.2f}* (Batas: 5.50 - 6.50)\n"
-            f"• Nilai TDS: *{ppm} PPM* (Batas: 560 - 1000 PPM)\n"
-            f"• Keterangan: *{', '.join(alert_messages)}*\n\n"
-            f"Waktu: {time.strftime('%Y-%m-%d %H:%M:%S')}"
-        )
-        send_telegram_alert(tele_msg)
+current_time = time.time()
+if (ph_is_abnormal or ppm_is_abnormal) and (current_time - st.session_state.last_alert_time > 600):
+    st.session_state.last_alert_time = current_time
+    tele_msg = (
+        f"*PERINGATAN SISTEM HIDROPONIK*\n\n"
+        f"Terdeteksi kondisi di luar ambang batas ideal:\n"
+        f"• Nilai pH: *{ph:.2f}* (Batas: 5.50 - 6.50)\n"
+        f"• Nilai TDS: *{ppm} PPM* (Batas: 560 - 1000 PPM)\n"
+        f"• Keterangan: *{', '.join(alert_messages)}*\n\n"
+        f"Waktu: {time.strftime('%Y-%m-%d %H:%M:%S')}"
+    )
+    send_telegram_alert(tele_msg)
 
 # Logika Sinyal pH
 if 0 <= ph < 3.00:
@@ -290,6 +213,7 @@ if history_data and isinstance(history_data, dict):
 df = pd.DataFrame(rows)
 
 if not df.empty:
+    # Konversi waktu ke WIB (Asia/Jakarta)
     df["time"] = pd.to_datetime(df["time"], unit='ms', utc=True).dt.tz_convert('Asia/Jakarta')
     df["ph"] = pd.to_numeric(df["ph"], errors='coerce')
     df["ppm"] = pd.to_numeric(df["ppm"], errors='coerce')
@@ -312,7 +236,7 @@ if not df.empty:
         st.write("**Grafik PPM**")
         st.line_chart(df.set_index("time")["ppm"])
 
-    # TABEL RIWAYAT LENGKAP
+    # TABEL RIWAYAT 
     st.subheader("Riwayat Lengkap")
     df_table = df_display.sort_values("time", ascending=False).reset_index(drop=True)
     st.dataframe(df_table, use_container_width=True)

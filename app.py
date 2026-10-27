@@ -6,7 +6,7 @@ import time
 import pytz
 
 # CONFIG
-st.set_page_config(layout="wide", page_title="Smart Hydroponic Monitoring")
+st.set_page_config(layout="wide", page_title="Smart Hydroponic Monitoring", initial_sidebar_state="expanded")
 
 # ==========================================
 # KONFIGURASI BOT TELEGRAM (AKTIF)
@@ -103,18 +103,87 @@ url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.a
 history_url = f"https://hidroponik-4c359-default-rtdb.asia-southeast1.firebasedatabase.app/history.json?t={timestamp_param}"
 http_headers = {"Cache-Control": "no-cache"}
 
-# AMBIL DATA REAL-TIME
+# ==========================================
+# AMBIL DATA DARI FIREBASE (DEFAULT)
+# ==========================================
 try:
     data = requests.get(url, headers=http_headers, timeout=5).json()
     if isinstance(data, dict):
-        ph = float(data.get("ph", 0.0))
-        ppm = int(data.get("ppm", 0))
+        ph_real = float(data.get("ph", 0.0))
+        ppm_real = int(data.get("ppm", 0))
     else:
-        ph, ppm = 0.0, 0
+        ph_real, ppm_real = 0.0, 0
 except Exception:
-    ph, ppm = 0.0, 0
+    ph_real, ppm_real = 0.0, 0
 
+# ==========================================
+# PANEL PENGUJIAN SKRIPSI DI SIDEBAR
+# ==========================================
+with st.sidebar:
+    st.header("🧪 Pengujian Status Skripsi")
+    st.caption("Pilih kondisi status untuk simulasi pengujian UI.")
+    
+    mode_simulasi = st.checkbox("Aktifkan Mode Pengujian Skripsi", value=False)
+    
+    if mode_simulasi:
+        st.subheader("1. Simulasi Status pH (5 Kondisi)")
+        pilihan_ph = st.selectbox(
+            "Pilih Bar pH:",
+            [
+                "Bar 1: Terlalu Asam (Merah | pH < 3.00)",
+                "Bar 2: Asam (Oranye | 3.01 - 5.49)",
+                "Bar 3: Ideal (Hijau | 5.50 - 6.50)",
+                "Bar 4: Basa (Cyan | 6.51 - 8.50)",
+                "Bar 5: Terlalu Basa (Biru | pH > 8.50)"
+            ],
+            index=2
+        )
+        
+        st.subheader("2. Simulasi Status Nutrisi (5 Kondisi)")
+        pilihan_ppm = st.selectbox(
+            "Pilih Bar PPM:",
+            [
+                "Bar 1: Nutrisi Sangat Rendah (Merah | 0 - 200 PPM)",
+                "Bar 2: Kekurangan Nutrisi (Oranye | 201 - 559 PPM)",
+                "Bar 3: Ideal (Hijau | 560 - 1000 PPM)",
+                "Bar 4: Nutrisi Berlebih (Cyan | 1001 - 1300 PPM)",
+                "Bar 5: Nutrisi Terlalu Banyak (Biru | > 1300 PPM)"
+            ],
+            index=2
+        )
+        
+        # Mapping nilai manipulasi pH
+        if "Bar 1" in pilihan_ph:
+            ph = 2.10
+        elif "Bar 2" in pilihan_ph:
+            ph = 4.50
+        elif "Bar 3" in pilihan_ph:
+            ph = 6.00
+        elif "Bar 4" in pilihan_ph:
+            ph = 7.20
+        else:
+            ph = 9.50
+
+        # Mapping nilai manipulasi PPM
+        if "Bar 1" in pilihan_ppm:
+            ppm = 120
+        elif "Bar 2" in pilihan_ppm:
+            ppm = 420
+        elif "Bar 3" in pilihan_ppm:
+            ppm = 700
+        elif "Bar 4" in pilihan_ppm:
+            ppm = 1150
+        else:
+            ppm = 1500
+            
+        st.info(f"Nilai Uji Aktif:\n- pH = **{ph:.2f}**\n- PPM = **{ppm}**")
+    else:
+        ph = ph_real
+        ppm = ppm_real
+
+# ==========================================
 # EVALUASI ALARM (pH: 5.50 - 6.50 | PPM: 560 - 1000)
+# ==========================================
 ph_is_abnormal = (ph < 5.50 or ph > 6.50)
 ppm_is_abnormal = (ppm < 560 or ppm > 1000)
 
@@ -129,24 +198,27 @@ if ppm < 560:
 elif ppm > 1000:
     alert_messages.append(f"Nutrisi Berlebih ({ppm} PPM)")
 
+# Banner Peringatan di Dashboard Web
 if alert_messages:
     st.error(f"PERINGATAN SISTEM: {' & '.join(alert_messages)}! Segera lakukan penyesuaian.")
 
-if "last_alert_time" not in st.session_state:
-    st.session_state.last_alert_time = 0
+# Kirim Notif Telegram (Cooldown 10 menit, dinonaktifkan saat mode simulasi aktif agar tidak spam)
+if not mode_simulasi:
+    if "last_alert_time" not in st.session_state:
+        st.session_state.last_alert_time = 0
 
-current_time = time.time()
-if (ph_is_abnormal or ppm_is_abnormal) and (current_time - st.session_state.last_alert_time > 600):
-    st.session_state.last_alert_time = current_time
-    tele_msg = (
-        f"*PERINGATAN SISTEM HIDROPONIK*\n\n"
-        f"Terdeteksi kondisi di luar ambang batas ideal:\n"
-        f"• Nilai pH: *{ph:.2f}* (Batas: 5.50 - 6.50)\n"
-        f"• Nilai TDS: *{ppm} PPM* (Batas: 560 - 1000 PPM)\n"
-        f"• Keterangan: *{', '.join(alert_messages)}*\n\n"
-        f"Waktu: {time.strftime('%Y-%m-%d %H:%M:%S')}"
-    )
-    send_telegram_alert(tele_msg)
+    current_time = time.time()
+    if (ph_is_abnormal or ppm_is_abnormal) and (current_time - st.session_state.last_alert_time > 600):
+        st.session_state.last_alert_time = current_time
+        tele_msg = (
+            f"*PERINGATAN SISTEM HIDROPONIK*\n\n"
+            f"Terdeteksi kondisi di luar ambang batas ideal:\n"
+            f"• Nilai pH: *{ph:.2f}* (Batas: 5.50 - 6.50)\n"
+            f"• Nilai TDS: *{ppm} PPM* (Batas: 560 - 1000 PPM)\n"
+            f"• Keterangan: *{', '.join(alert_messages)}*\n\n"
+            f"Waktu: {time.strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+        send_telegram_alert(tele_msg)
 
 # Logika Sinyal pH
 if 0 <= ph < 3.00:
